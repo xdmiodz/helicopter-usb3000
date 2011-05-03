@@ -1,5 +1,5 @@
 //******************************************************************************
-// консольная программа для ввода данных в РС из модуля USB3000
+//консольная программа для ввода данных в РС из модуля USB3000
 //******************************************************************************
 #include <stdio.h>
 #include <conio.h>
@@ -67,9 +67,12 @@ bool IsThreadComplete = false;
 //------------------------------------------------------------------------
 // основная программа
 //------------------------------------------------------------------------
-void main(void)
+void main(int argc, char* argv[])
 {
-	WORD i;
+  WORD i;
+  char* savefile = argv[1];
+  WORD channel1 = atoi(argv[2]);
+  WORD channel2 = atoi(argv[3]);
 
 	// зачистим экран монитора	
 	system("cls");
@@ -164,8 +167,10 @@ void main(void)
 //	ip.InputClockSource = RTUSB3000::EXTERNAL_INPUT_CLOCK;	// будем использовать внешние тактовые испульсы для ввода данных
 	ip.SynchroType = RTUSB3000::NO_SYNCHRO;	// не будем использовать никакую синхронизацию при вводе данных  
 //	ip.SynchroType = RTUSB3000::TTL_START_SYNCHRO;	// будем использовать цифровую синхронизацию старта при вводе данных  
-	ip.ChannelsQuantity = 0x4;					// четыре активных канала
-	for(i = 0x0; i < ip.ChannelsQuantity; i++) ip.ControlTable[i] = (WORD)(i);
+	ip.ChannelsQuantity = 0x2;					// четыре активных канала
+	//for(i = 0x0; i < ip.ChannelsQuantity; i++) ip.ControlTable[i] = (WORD)(i);
+	ip.ControlTable[0] = (WORD)(channel1);
+	ip.ControlTable[1] = (WORD)(channel2);
 	ip.InputRate = ReadRate;					// частота работы АЦП в кГц
 	ip.InterKadrDelay = 0.0;					// межкадровая задержка - пока всегда устанавливать в 0.0
 	ip.InputFifoBaseAddress = 0x0;  			// базовый адрес FIFO буфера АЦП
@@ -217,9 +222,9 @@ void main(void)
  	if(!ThreadErrorNumber)
 	{
 		// откроем файл для записи полученных данных
-		hFile = CreateFile("Test.dat", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
-		if(hFile == INVALID_HANDLE_VALUE) TerminateApplication(" Open file 'Test.dat' --> Failed!!!\n");
-		else printf(" CreateFile(Test.dat) --> Ok\n");
+		hFile = CreateFile(savefile, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+		if(hFile == INVALID_HANDLE_VALUE) TerminateApplication(" Open file --> Failed!!!\n");
+		else printf(" CreateFile --> Ok\n");
 
 		// теперь запишем в файл полученные данные
 		DWORD FileBytesWritten = 0x0;
@@ -228,8 +233,8 @@ void main(void)
 							2*NBlockRead*DataStep,		// number of bytes to write
     						&FileBytesWritten,			// pointer to number of bytes written
 					   	NULL			  					// pointer to structure needed for overlapped I/O
-					   ))  TerminateApplication(" WriteFile(Test.dat) --> Failed!!!");
-		else printf(" WriteFile(Test.dat) --> Ok\n");
+					   ))  TerminateApplication(" WriteFile --> Failed!!!");
+		else printf(" WriteFile --> Ok\n");
 	}		
 
 	// если была ошибка - сообщим об этом
