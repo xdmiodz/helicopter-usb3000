@@ -70,9 +70,9 @@ bool IsThreadComplete = false;
 void main(int argc, char* argv[])
 {
   WORD i;
-  char* savefile = argv[1];
-  WORD channel1 = atoi(argv[2]);
-  WORD channel2 = atoi(argv[3]);
+  int iSize = MultiByteToWideChar(CP_ACP, 0, argv[1], -1, NULL, 0);
+  LPWSTR wsavefile = new WCHAR[iSize];
+  MultiByteToWideChar(CP_ACP, 0, argv[1], -1, wsavefile, iSize);
 
 	// зачистим экран монитора	
 	system("cls");
@@ -167,10 +167,10 @@ void main(int argc, char* argv[])
 //	ip.InputClockSource = RTUSB3000::EXTERNAL_INPUT_CLOCK;	// будем использовать внешние тактовые испульсы для ввода данных
 	ip.SynchroType = RTUSB3000::NO_SYNCHRO;	// не будем использовать никакую синхронизацию при вводе данных  
 //	ip.SynchroType = RTUSB3000::TTL_START_SYNCHRO;	// будем использовать цифровую синхронизацию старта при вводе данных  
-	ip.ChannelsQuantity = 0x2;					// четыре активных канала
-	//for(i = 0x0; i < ip.ChannelsQuantity; i++) ip.ControlTable[i] = (WORD)(i);
-	ip.ControlTable[0] = (WORD)(channel1);
-	ip.ControlTable[1] = (WORD)(channel2);
+	ip.ChannelsQuantity = 0x4;					// четыре активных канала
+	for(i = 0x0; i < ip.ChannelsQuantity; i++) ip.ControlTable[i] = (WORD)(i);
+	//ip.ControlTable[0] = (WORD)(channel1);
+	//ip.ControlTable[1] = (WORD)(channel2);
 	ip.InputRate = ReadRate;					// частота работы АЦП в кГц
 	ip.InterKadrDelay = 0.0;					// межкадровая задержка - пока всегда устанавливать в 0.0
 	ip.InputFifoBaseAddress = 0x0;  			// базовый адрес FIFO буфера АЦП
@@ -222,7 +222,7 @@ void main(int argc, char* argv[])
  	if(!ThreadErrorNumber)
 	{
 		// откроем файл для записи полученных данных
-		hFile = CreateFile(savefile, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
+		hFile = CreateFile(wsavefile, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
 		if(hFile == INVALID_HANDLE_VALUE) TerminateApplication(" Open file --> Failed!!!\n");
 		else printf(" CreateFile --> Ok\n");
 
@@ -236,7 +236,7 @@ void main(int argc, char* argv[])
 					   ))  TerminateApplication(" WriteFile --> Failed!!!");
 		else printf(" WriteFile --> Ok\n");
 	}		
-
+	delete wsavefile;
 	// если была ошибка - сообщим об этом
 	if(ThreadErrorNumber) { TerminateApplication(NULL, false); ShowThreadErrorMessage(); }
 	else { printf("\n"); TerminateApplication("\n The program was completed successfully!!!\n", false); }
