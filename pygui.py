@@ -35,7 +35,8 @@ from matplotlib.backends.backend_wxagg import \
 	NavigationToolbar2WxAgg as NavigationToolbar
 import numpy as np
 import pylab
-
+import subprocess
+import tempfile
 
 class DataGen(object):
 	""" Class to read data from usb300
@@ -48,13 +49,15 @@ class DataGen(object):
 		self.time = np.array([])
 		
 	def update(self, ch1, ch2, pulse_period):
-		fromfile =  os.tmpnam()
-		readcmd = self.readcmd + ' ' + fromfile
-		os.system(readcmd)
-		t=np.fromfile(fromfile, dtype=int16)
+		fromfile =  tempfile.mktemp()
+		normcmd = os.path.normpath(self.readcmd)
+		args = [normcmd, fromfile]
+		r = subprocess.call(args)
+		t=np.fromfile(fromfile, dtype=pylab.int16)
 		l = np.size(t)
-		self.ch1 = np.append(self.ch1, np.mean(np.array([a[4*i+ch1] for i in xrange(int(l/2))])))
-		self.ch2 = np.append(self.ch2, np.mean(np.array([a[4*i+ch2] for i in xrange(int(l/2))])))
+		print l
+		self.ch1 = np.append(self.ch1, [np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))])
+		self.ch2 = np.append(self.ch2, [np.mean(np.array([t[4*i+ch2] for i in xrange(int(l/4))]))])
 		l = np.size(self.time)
 		if l==0:
 			lastt = 0
@@ -63,6 +66,8 @@ class DataGen(object):
 		
 		self.time = np.append(self.time, [lastt + pulse_period])
 		os.remove(fromfile)
+		#self.ch1 = np.append(self.ch1, [1])
+		#self.ch2 = np.append(self.ch2,[1] )
 		return [self.ch1, self.ch2, self.time]
 		 
 		
@@ -130,7 +135,7 @@ class BoundTextBox(wx.Panel):
 		self.value2 = self.manual_text2.GetValue()
 
 	def manual_value(self):
-		return [self.value1, self.value2]
+		return [self.manual_text1.GetValue(), self.manual_text2.GetValue()]
 		
 class BoundFileBox(BoundTextBox):
 	def __init__(self, parent, ID, label, desc1, desc2, initval1, initval2):
@@ -218,9 +223,9 @@ class GraphFrame(wx.Frame):
 	def __init__(self):
 		wx.Frame.__init__(self, None, -1, self.title)
 		self.dataread = DataGen()
-		self.data = np.array([])
-		self.data2 = np.array([])
-		self.time = np.array([])
+		self.data = np.array([0])
+		self.data2 = np.array([0])
+		self.time = np.array([0])
 		self.paused = False
 		
 		self.create_menu()
@@ -230,28 +235,27 @@ class GraphFrame(wx.Frame):
 		self.redraw_timer = wx.Timer(self)
 		self.Bind(wx.EVT_TIMER, self.on_redraw_timer, self.redraw_timer)	
 		[Period, Duartion] = self.pulse_control.manual_value()
-		self.redraw_timer.Start(int(Period))
+		self.redraw_timer.Start(float(Period)*1000)
+		
 
 	def create_menu(self):
 		self.menubar = wx.MenuBar()
 		
 		menu_file = wx.Menu()
-		m_expt = menu_file.Append(-1, "&Save plot\tCtrl-S", "Save plot to file")
+		m_expt = menu_file.Append(-1, "&Save plot\tCtrl-P", "Save plot to file")
 		self.Bind(wx.EVT_MENU, self.on_save_plot, m_expt)
+		m_savedata = menu_file.Append(-1, "&Save data\tCtrl-D", "Save channels to file")
+		self.Bind(wx.EVT_MENU, self.on_save_data, m_savedata)
 		menu_file.AppendSeparator()
 		m_exit = menu_file.Append(-1, "E&xit\tCtrl-X", "Exit")
 		self.Bind(wx.EVT_MENU, self.on_exit, m_exit)
-				
 		self.menubar.Append(menu_file, "&File")
 		self.SetMenuBar(self.menubar)
 
 	def create_main_panel(self):
 		self.panel = wx.Panel(self)
-
 		self.init_plot()
 		self.canvas = FigCanvas(self.panel, -1, self.fig)
-
-
 		self.xmin_control = BoundControlBox(self.panel, -1, "X1 min", 0)
 		self.xmax_control = BoundControlBox(self.panel, -1, "X1 max", 60)
 		self.ymin_control = BoundControlBox(self.panel, -1, "Y1 min", 0)
@@ -262,14 +266,13 @@ class GraphFrame(wx.Frame):
 		self.ymin_control2 = BoundControlBox(self.panel, -1, "Y2 min", 0)
 		self.ymax_control2 = BoundControlBox(self.panel, -1, "Y2 max", 100)
 
-		self.pulse_control = BoundTextBox(self.panel, -1, "Pulse", "Period", 
-										  "Duration", 1000, 100)
+		self.pulse_control = BoundTextBox(self.panel, -1, "Pulse", "Period, sec", 
+										  "Duration, sec", 20, 0.5)
 		self.cmd_control = BoundFileBox(self.panel, -1, "Cmds", "Read cmd", 
 										  "Write cmd", "read.exe", "write.exe")
 										  
 		[RC, WC] = self.cmd_control.manual_value()
 		self.dataread.set_readcmd(RC)
-		
 		self.pause_button = wx.Button(self.panel, -1, "Pause")
 		self.Bind(wx.EVT_BUTTON, self.on_pause_button, self.pause_button)
 		self.Bind(wx.EVT_UPDATE_UI, self.on_update_pause_button, self.pause_button)
@@ -296,14 +299,14 @@ class GraphFrame(wx.Frame):
 		self.hbox2 = wx.BoxSizer(wx.HORIZONTAL)
 		self.hbox2.Add(self.xmin_control, border=5, flag=wx.ALL)
 		self.hbox2.Add(self.xmax_control, border=5, flag=wx.ALL)
-		self.hbox2.AddSpacer(24)
+		self.hbox2.AddSpacer(2)
 		self.hbox2.Add(self.ymin_control, border=5, flag=wx.ALL)
 		self.hbox2.Add(self.ymax_control, border=5, flag=wx.ALL)
 
 		self.hbox3 = wx.BoxSizer(wx.HORIZONTAL)
 		self.hbox3.Add(self.xmin_control2, border=5, flag=wx.ALL)
 		self.hbox3.Add(self.xmax_control2, border=5, flag=wx.ALL)
-		self.hbox3.AddSpacer(24)
+		self.hbox3.AddSpacer(2)
 		self.hbox3.Add(self.ymin_control2, border=5, flag=wx.ALL)
 		self.hbox3.Add(self.ymax_control2, border=5, flag=wx.ALL)
 
@@ -333,14 +336,11 @@ class GraphFrame(wx.Frame):
 
 		self.axes = self.fig.add_subplot(211)
 		self.axes.set_axis_bgcolor('black')
-		self.axes.set_title('Channel 1', size=12)
-		
-
+		self.axes.set_title('Channel 1', size=10)
 		self.axes2 = self.fig.add_subplot(212)
 		self.axes2.set_axis_bgcolor('black')
-		self.axes2.set_title('Channel 2', size=12)
-		self.axes2.set_xlabel('Time')
-		
+		self.axes2.set_title('Channel 2', size=10)
+		self.axes2.set_xlabel('Time, secs', size=10)
 		#self.axes.set_xticks([])
 
 		pylab.setp(self.axes.get_xticklabels(), fontsize=8)
@@ -348,6 +348,8 @@ class GraphFrame(wx.Frame):
 		
 		pylab.setp(self.axes2.get_xticklabels(), fontsize=8)
 		pylab.setp(self.axes2.get_yticklabels(), fontsize=8)
+		
+		pylab.setp(self.axes.get_xticklabels(), visible=0)
 
 		# plot the data as a line series, and save the reference 
 		# to the plotted line series
@@ -363,7 +365,6 @@ class GraphFrame(wx.Frame):
 			linewidth=1,
 			color=(1, 1, 0),
 			)[0]
-  
 
 	def draw_plot(self):
 		""" Redraws the plot
@@ -441,21 +442,19 @@ class GraphFrame(wx.Frame):
 		# returns a list over which one needs to explicitly 
 		# iterate, and setp already handles this.
 		#  
-		pylab.setp(self.axes.get_xticklabels(), 
-			visible=self.cb_xlab.IsChecked())
+		pylab.setp(self.axes.get_xticklabels(), visible=0)
 
 		pylab.setp(self.axes2.get_xticklabels(), 
 			visible=self.cb_xlab.IsChecked())
 		
-		self.plot_data.set_xdata(self.time/1000)
+		self.plot_data.set_xdata(np.array(range(np.size(self.data))))
 		self.plot_data.set_ydata(self.data)
 		
-		self.plot_data2.set_xdata(self.time/1000)
+		self.plot_data2.set_xdata(np.array(range(np.size(self.data))))
 		self.plot_data2.set_ydata(self.data2)
 		
 		self.canvas.draw()
   
-	
 	def on_pause_button(self, event):
 		self.paused = not self.paused
 	
@@ -483,23 +482,39 @@ class GraphFrame(wx.Frame):
 		if dlg.ShowModal() == wx.ID_OK:
 			path = dlg.GetPath()
 			self.canvas.print_figure(path, dpi=self.dpi)
-			self.flash_status_message("Saved to %s" % path)
+			self.flash_status_message("Plot saved to %s" % path)
 	
+	def on_save_data(self, event):
+		file_choices = "NPZ (*.npz)|*.npz"
+		
+		dlg = wx.FileDialog(
+			self, 
+			message="Save data as...",
+			defaultDir=os.getcwd(),
+			defaultFile="channels.npz",
+			wildcard=file_choices,
+			style=wx.SAVE)
+		
+		if dlg.ShowModal() == wx.ID_OK:
+			path = dlg.GetPath()
+			np.savez(path, ch1=self.data, ch2=self.data2, time=self.time)
+			self.flash_status_message("Data saved to %s" % path)
+		
 	def on_redraw_timer(self, event):
 		# if paused do not add data, but still redraw the plot
 		# (to respond to scale modifications, grid change, etc.)
 		#
-		if not self.paused:
-			[self.data, self.data2, self.time] = self.dataread.update(1,2, self.redraw_timer.GetInterval())
-		self.draw_plot()
-		
-		[Period, Duration] = self.pulse_control.manual_value()
 		[RC, WC] = self.cmd_control.manual_value()
 		if(RC != self.dataread.get_readcmd()):
 			self.dataread.set_readcmd(RC)
+		if not self.paused:
+			[self.data, self.data2, self.time] = self.dataread.update(0, 1, self.redraw_timer.GetInterval())
+		self.draw_plot()
+		
+		[Period, Duration] = self.pulse_control.manual_value()
 		if self.redraw_timer.GetInterval() != Period:
 			self.redraw_timer.Stop()
-			self.redraw_timer.Start(int(Period))
+			self.redraw_timer.Start(float(Period)*1000)
 	
 	def on_exit(self, event):
 		self.Destroy()

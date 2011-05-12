@@ -46,12 +46,12 @@ RTUSB3000::INPUT_PARS ip;
 // максимально возможное кол-во опрашиваемых виртуальных слотов
 const WORD MaxVirtualSoltsQuantity = 127;
 // частота  ввода данных
-const double ReadRate = 3000.0;
+const double ReadRate = 1000.0; 
 
 //max возможное кол-во передаваемых отсчетов (кратное 32) для ф. ReadData и WriteData()
-DWORD DataStep = 1024*1024;
+DWORD DataStep = 1024*128;
 // столько блоков по DataStep отсчётов нужно собрать в файл
-const WORD NBlockRead = 20;
+const WORD NBlockRead = 1;
 // указатель на буфер для вводимых данных
 SHORT	*ReadBuffer;
 
@@ -73,9 +73,6 @@ void main(int argc, char* argv[])
   int iSize = MultiByteToWideChar(CP_ACP, 0, argv[1], -1, NULL, 0);
   LPWSTR wsavefile = new WCHAR[iSize];
   MultiByteToWideChar(CP_ACP, 0, argv[1], -1, wsavefile, iSize);
-
-	// зачистим экран монитора	
-	system("cls");
 
 	printf(" **********************************************\n");
 	printf(" Data Reading Console Example for USB3000 unit \n");
