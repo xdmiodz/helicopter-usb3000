@@ -75,10 +75,12 @@ bool IsThreadComplete = false;
 //------------------------------------------------------------------------
 void main(int argc, char* argv[])
 {
-		WORD i;
+<<<<<<< .mine		WORD i;
 		PulseDuration = atof(argv[1]);
 		DacNumber = (WORD)atoi(argv[2]);
-		
+=======		WORD i;
+		PulseDuration = atof(argv[1]);
+>>>>>>> .theirs		
 		
 		printf(" *******************************************\n");
 		printf(" Console example of Data Writing to USB3000 \n");
@@ -223,7 +225,7 @@ void main(int argc, char* argv[])
 //------------------------------------------------------------------------
 DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 {
-		WORD RequestNumber;
+<<<<<<< .mine		WORD RequestNumber;
 		DWORD i;
 		WORD stop = 0;
 		DWORD BaseIndex;
@@ -233,8 +235,17 @@ DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 		OVERLAPPED WriteOv[2];
 		DWORD BytesTransferred[2];
 		DWORD TimeOut;
-
-		// формируем данные для целого FIFO буфера вывода в модуле (учитывая корректировку)
+=======		WORD RequestNumber;
+		DWORD i;
+		DWORD BaseIndex;
+		// идентификатор массива их двух событий
+		HANDLE WriteEvent[2];
+		// массив OVERLAPPED структур из двух элементов
+		OVERLAPPED WriteOv[2];
+		DWORD BytesTransferred[2];
+		DWORD TimeOut;
+>>>>>>> .theirs
+<<<<<<< .mine		// формируем данные для целого FIFO буфера вывода в модуле (учитывая корректировку)
 		/*for(i = 0x0; i < (DWORD)dp.OutputFifoLength; i++)
 		{
 				if (CurrentTime < PulseDuration)
@@ -255,8 +266,26 @@ DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 		// заполняем целиком FIFO буфер вывода в DSP модуля
 		if(!pModule->PUT_DM_ARRAY(dp.OutputFifoBaseAddress, dp.OutputFifoLength, (SHORT *)WriteBuffer))
 		{ ThreadErrorNumber = 0x1; IsThreadComplete = true; return 1; }
-
-		// теперь формируем выводимые данные для всего буфера WriteBuffer (учитывая корректировку)
+=======		// формируем данные для целого FIFO буфера вывода в модуле (учитывая корректировку)
+		for(i = 0x0; i < (DWORD)dp.OutputFifoLength; i++)
+		{
+				if (CurrentTime < PulseDuration)
+				{
+						WriteBuffer[i] = Round((2047.0 + SignalAmplitude + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
+				}
+				else
+				{
+						WriteBuffer[i] = Round((2047.0 + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
+				}
+				WriteBuffer[i] &= (WORD)(0xFFF);
+				WriteBuffer[i] |= (WORD)(DacNumber << 15) | (WORD)(0x1 << 14);
+				CurrentTime += 1.0/dp.OutputRate;
+		}
+		// заполняем целиком FIFO буфер вывода в DSP модуля
+		if(!pModule->PUT_DM_ARRAY(dp.OutputFifoBaseAddress, dp.OutputFifoLength, (SHORT *)WriteBuffer))
+		{ ThreadErrorNumber = 0x1; IsThreadComplete = true; return 1; }
+>>>>>>> .theirs
+<<<<<<< .mine		// теперь формируем выводимые данные для всего буфера WriteBuffer (учитывая корректировку)
 		for(i = 0x0; i < 2*DataStep; i++)
 		{
 				if (CurrentTime < PulseDuration)
@@ -272,7 +301,22 @@ DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 				WriteBuffer[i] |= (WORD)(DacNumber << 15) | (WORD)(0x1 << 14);
 				CurrentTime += 1.0/dp.OutputRate;
 		}*/
-
+=======		// теперь формируем выводимые данные для всего буфера WriteBuffer (учитывая корректировку)
+		for(i = 0x0; i < 2*DataStep; i++)
+		{
+				if (CurrentTime < PulseDuration)
+				{
+						WriteBuffer[i] = Round((2047.0 + SignalAmplitude + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
+				}
+				else
+				{
+						WriteBuffer[i] = Round((2047.0 + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
+				}
+				WriteBuffer[i] &= (WORD)(0xFFF);
+				WriteBuffer[i] |= (WORD)(DacNumber << 15) | (WORD)(0x1 << 14);
+				CurrentTime += 1.0/dp.OutputRate;
+		}
+>>>>>>> .theirs
 		// остановим вывод данных и одновременно прочистим соответствующий канал bulk USB (PIPE_RESET)
 		if(!pModule->STOP_WRITE()) { ThreadErrorNumber = 0x6; IsThreadComplete = true; return 0; }
 
@@ -293,7 +337,7 @@ DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 		// теперь запускаем собственно сам вывод данных
 		if(pModule->START_WRITE())
 		{
-				// цикл перманентного вывода данных
+<<<<<<< .mine				// цикл перманентного вывода данных
 				for(;;)
 				{
 						
@@ -327,19 +371,51 @@ DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 						// сделаем запрос на вывод очередной порции данных в DSP модуля
 						if(!pModule->WriteData(WriteBuffer + RequestNumber*DataStep, &DataStep, &BytesTransferred[RequestNumber], &WriteOv[RequestNumber]))
 								if(GetLastError() != ERROR_IO_PENDING) { ThreadErrorNumber = 0x2; break; }
-
+=======				// цикл перманентного вывода данных
+				for(;;)
+				{
+						RequestNumber ^= 0x1;
+						// сделаем запрос на вывод очередной порции данных в DSP модуля
+						if(!pModule->WriteData(WriteBuffer + RequestNumber*DataStep, &DataStep, &BytesTransferred[RequestNumber], &WriteOv[RequestNumber]))
+								if(GetLastError() != ERROR_IO_PENDING) { ThreadErrorNumber = 0x2; break; }
+>>>>>>> .theirs
 						// ждём окончания операции вывода очередной порции данных
 						if(WaitForSingleObject(WriteEvent[RequestNumber^0x1], TimeOut) == WAIT_TIMEOUT)
 						{ ThreadErrorNumber = 0x3; break; }
 
-						if(ThreadErrorNumber) break;
+<<<<<<< .mine						if(ThreadErrorNumber) break;
 						else if(kbhit()) { ThreadErrorNumber = 0x1; break; }
 						else Sleep(0);
 						Counter++;
 				}
-
-		}
-		else { ThreadErrorNumber = 0x5; }
+=======						// сформируем следующую порцию выводимых данных (учитывая корректировку)
+						BaseIndex = (RequestNumber^0x1)*DataStep;
+						for(i = 0x0; i < DataStep; i++)
+						{
+								if (CurrentTime < PulseDuration)
+								{
+										WriteBuffer[i] = Round((2047.0 + SignalAmplitude + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
+								}
+								else
+								{
+										WriteBuffer[i] = Round((2047.0 + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
+								}	
+								WriteBuffer[i + BaseIndex] &= (WORD)(0xFFF);
+								WriteBuffer[i + BaseIndex] |= (WORD)(DacNumber << 15) | (WORD)(0x1 << 14);
+								CurrentTime += 1.0/dp.OutputRate;
+								if (CurrentTime > 2*PulseDuration)
+								{
+										break;
+								}
+						}
+>>>>>>> .theirs
+<<<<<<< .mine=======						if(ThreadErrorNumber) break;
+						else if(kbhit()) { ThreadErrorNumber = 0x1; break; }
+						else Sleep(0);
+						Counter++;
+				}
+>>>>>>> .theirs		}
+<<<<<<< .mine		else { ThreadErrorNumber = 0x5; }
 		
 		// остановим вывод данных
 		if(!pModule->STOP_WRITE()) ThreadErrorNumber = 0x6;
@@ -347,12 +423,23 @@ DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 		if(!CancelIo(pModule->GetModuleHandle())) ThreadErrorNumber = 0x7;
 		// освободим идентификаторы событий
 		CloseHandle(WriteEvent[0]); CloseHandle(WriteEvent[1]);
-
-		// установим флажок окончания потока вывода данных
+=======		else { ThreadErrorNumber = 0x5; }
+>>>>>>> .theirs
+<<<<<<< .mine		// установим флажок окончания потока вывода данных
+		IsThreadComplete = true;
+=======		// остановим вывод данных
+		if(!pModule->STOP_WRITE()) ThreadErrorNumber = 0x6;
+		// уберём за собой
+		if(!CancelIo(pModule->GetModuleHandle())) ThreadErrorNumber = 0x7;
+		// освободим идентификаторы событий
+		CloseHandle(WriteEvent[0]); CloseHandle(WriteEvent[1]);
+>>>>>>> .theirs
+<<<<<<< .mine		return 0;							// Выйдем из потока
+=======		// установим флажок окончания потока вывода данных
 		IsThreadComplete = true;
 
 		return 0;							// Выйдем из потока
-}
+>>>>>>> .theirs}
 
 //---------------------------------------------------------------------------
 //
