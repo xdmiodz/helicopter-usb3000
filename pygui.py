@@ -23,6 +23,7 @@ import pprint
 import random
 import sys
 import wx
+import ConfigParser
 
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
@@ -38,6 +39,22 @@ import pylab
 import subprocess
 import tempfile
 
+class DataWrite(object):
+	""" Class to write data to usb3000
+	"""
+	def __init__(self):
+		self.writecmd = ''
+	def writedata(self, channel, duration):
+		normcmd = os.path.normpath(self.writecmd)
+		args = [normcmd, str(duration), str(channel)]
+		r = subprocess.Popen(args)
+		
+	def set_writecmd(self, writecmd):
+		self.writecmd = writecmd
+	
+	def get_writecmd(self):
+		return self.writecmd
+
 class DataGen(object):
 	""" Class to read data from usb300
 		and save it to the internal varibale or a file
@@ -48,16 +65,19 @@ class DataGen(object):
 		self.ch2 = np.array([], dtype=np.int32)
 		self.time = np.array([])
 		
-	def update(self, ch1, ch2, pulse_period):
+	def update(self, ch1, ch2, pulse_period, Ach1, Ach2):
 		fromfile =  tempfile.mktemp()
 		normcmd = os.path.normpath(self.readcmd)
 		args = [normcmd, fromfile]
-		r = subprocess.call(args)
-		t=np.fromfile(fromfile, dtype=pylab.int16)
-		l = np.size(t)
-		ch1nval = (1525/1572.8)*(837/664.5)*5*2000*np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))/8192/1.024
-		ch2nval = (837/799.8)*5*330*np.mean(np.array([t[4*i+ch2] for i in xrange(int(l/4))]))/8192
-		#ch1nval = (837/664.5)*5*2000*np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))/8192
+		#r = subprocess.call(args)
+		#t=np.fromfile(fromfile, dtype=pylab.int16)
+		#l = np.size(t)
+		l = 0
+		ch1nval = 1
+		ch2nval = 2
+		#ch1nval = Ach1*np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))
+		#ch2nval = Ach2*5*330*np.mean(np.array([t[4*i+ch2] for i in xrange(int(l/4))]))
+		#ch1nval = (837/664.5)*5*2000*np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))/8192/1.024
 		#ch2nval = (837/799.8)*5*330*np.mean(np.array([t[4*i+ch2] for i in xrange(int(l/4))]))/8192
 		print 'ch' + str(int(ch1+1)) + ' = ' + str(int(ch1nval)) + ' V/m'
 		print 'ch' + str(int(ch2+1)) + ' = ' + str(int(ch2nval)) + ' V/m'
@@ -70,9 +90,7 @@ class DataGen(object):
 			lastt=self.time[l-1]
 		
 		self.time = np.append(self.time, [lastt + pulse_period])
-		os.remove(fromfile)
-		#self.ch1 = np.append(self.ch1, [1])
-		#self.ch2 = np.append(self.ch2,[1] )
+		#os.remove(fromfile)
 		return [self.ch1, self.ch2, self.time]
 		 
 		
@@ -99,23 +117,23 @@ class BoundTextBox(wx.Panel):
 		sizer = wx.StaticBoxSizer(box, wx.VERTICAL)
 		
 		self.manual_text1 = wx.TextCtrl(self, -1, 
-										size=(-1,-1),
-										value=str(initval1),
-										style=wx.TE_PROCESS_ENTER)
+						size=(-1,-1),
+						value=str(initval1),
+						style=wx.TE_PROCESS_ENTER)
 		self.manual_text2 = wx.TextCtrl(self, -1, 
-										size=(-1,-1),
-										value=str(initval2),
-										style=wx.TE_PROCESS_ENTER)
-
+						size=(-1,-1),
+						value=str(initval2),
+						style=wx.TE_PROCESS_ENTER)
+		
 		self.desc_text1 = wx.StaticText(self, -1,  
-										desc1, (0,0), 
-										(-1,-1), 0, 
-										"")
+						desc1, (0,0), 
+						(-1,-1), 0, 
+						"")
 		
 		self.desc_text2 = wx.StaticText(self, -1,  
-										desc2, (0,0), 
-										(-1,-1), 0, 
-										"")
+						desc2, (0,0), 
+						(-1,-1), 0, 
+						"")
 		self.box1.Add(self.desc_text1, 1, flag=wx.ALIGN_LEFT | wx.ALIGN_CENTER)
 		self.box1.Add(self.manual_text1, 1, flag=wx.ALIGN_RIGHT| wx.ALIGN_CENTER)
 
@@ -151,13 +169,12 @@ class BoundFileBox(BoundTextBox):
 	def on_text_dclick(self):
 		file_choices = "EXE (*.exe)|*.exe"
 		
-		dlg = wx.FileDialog(
-			self, 
-			message="Select the program...",
-			defaultDir=os.getcwd(),
-			defaultFile="",
-			wildcard=file_choices,
-			style=wx.OPEN)
+		dlg = wx.FileDialog(self, 
+				    message="Select the program...",
+				    defaultDir=os.getcwd(),
+				    defaultFile="",
+				    wildcard=file_choices,
+				    style=wx.OPEN)
 		
 		if dlg.ShowModal() == wx.ID_OK:
 			path = dlg.GetPath()
@@ -186,13 +203,13 @@ class BoundControlBox(wx.Panel):
 		sizer = wx.StaticBoxSizer(box, wx.VERTICAL)
 		
 		self.radio_auto = wx.RadioButton(self, -1, 
-			label="Auto", style=wx.RB_GROUP)
+						 label="Auto", style=wx.RB_GROUP)
 		self.radio_manual = wx.RadioButton(self, -1,
-			label="Manual")
+						   label="Manual")
 		self.manual_text = wx.TextCtrl(self, -1, 
-			size=(35,-1),
-			value=str(initval),
-			style=wx.TE_PROCESS_ENTER)
+					       size=(35,-1),
+					       value=str(initval),
+					       style=wx.TE_PROCESS_ENTER)
 		
 		self.Bind(wx.EVT_UPDATE_UI, self.on_update_manual_text, self.manual_text)
 		self.Bind(wx.EVT_TEXT_ENTER, self.on_text_enter, self.manual_text)
@@ -227,7 +244,16 @@ class GraphFrame(wx.Frame):
 	
 	def __init__(self):
 		wx.Frame.__init__(self, None, -1, self.title)
+		self.config = ConfigParser.RawConfigParser()
+		default_config = os.getcwd() + '/helicopter.ini'
+		if os.path.isfile == True:
+			config.read(defaul_config)
+		else:
+			self.config=self.make_default_config()
+			with open(default_config, 'wb') as configfile:
+				self.config.write(configfile)
 		self.dataread = DataGen()
+		self.datawrite = DataWrite()
 		self.data = np.array([0],dtype=np.int32)
 		self.data2 = np.array([0], dtype=np.int32)
 		self.time = np.array([0])
@@ -239,18 +265,43 @@ class GraphFrame(wx.Frame):
 		
 		self.redraw_timer = wx.Timer(self)
 		self.Bind(wx.EVT_TIMER, self.on_redraw_timer, self.redraw_timer)	
-		[Period, Duartion] = self.pulse_control.manual_value()
-		self.redraw_timer.Start(float(Period)*1000)
+		self.redraw_timer.Start(float(self.config.get('pulse', 'period'))*1000)
+		self.dataread.set_readcmd(self.config.get('cmds', 'readcmd'))
+		self.datawrite.set_writecmd(self.config.get('cmds', 'writecmd'))
+		
+	def make_default_config(self):
+		config = ConfigParser.RawConfigParser()
+		
+		config.add_section('pulse')
+		config.set('pulse', 'period', '10.0')
+		config.set('pulse', 'duration', '0.7')
+		
+		config.add_section('cmds')
+		config.set('cmds', 'readcmd', 'read_usb3000.exe')
+		config.set('cmds', 'writecmd', 'write_usb3000.exe')
+
+		config.add_section('channels')
+		config.set('channels', 'ch1', '3')
+		config.set('channels', 'ch2', '4')
+		config.set('channels', 'Ach1', '(1525/1572.8)*(837/664.5)*5*2000/8192/1.024')
+		config.set('channels', 'Ach2', '(837/799.8)*5*330/8192')
+		
+		config.add_section('autosave')
+		config.set('autosave', 'on', 'true')
+		config.set('autosave', 'timer', '30')
+		
+		return config
 		
 
 	def create_menu(self):
 		self.menubar = wx.MenuBar()
-		
 		menu_file = wx.Menu()
 		m_expt = menu_file.Append(-1, "&Save plot\tCtrl-P", "Save plot to file")
 		self.Bind(wx.EVT_MENU, self.on_save_plot, m_expt)
 		m_savedata = menu_file.Append(-1, "&Save data\tCtrl-D", "Save channels to file")
 		self.Bind(wx.EVT_MENU, self.on_save_data, m_savedata)
+		m_savedata = menu_file.Append(-1, "&Save configuration\tCtrl-C", "Save configuarution to file")
+		self.Bind(wx.EVT_MENU, self.on_save_config, m_savedata)
 		menu_file.AppendSeparator()
 		m_exit = menu_file.Append(-1, "E&xit\tCtrl-X", "Exit")
 		self.Bind(wx.EVT_MENU, self.on_exit, m_exit)
@@ -270,11 +321,16 @@ class GraphFrame(wx.Frame):
 		self.xmax_control2 = BoundControlBox(self.panel, -1, "X2 max", 60)
 		self.ymin_control2 = BoundControlBox(self.panel, -1, "Y2 min", 0)
 		self.ymax_control2 = BoundControlBox(self.panel, -1, "Y2 max", 100)
-
+		
+		readcmd = self.config.get('cmds', 'readcmd')
+		writecmd = self.config.get('cmds', 'writecmd')
+		period = self.config.getfloat('pulse', 'period')
+		duration = self.config.getfloat('pulse', 'duration')
+		
 		self.pulse_control = BoundTextBox(self.panel, -1, "Pulse", "Period, sec", 
-										  "Duration, sec", 20, 0.5)
+						  "Duration, sec", period, duration)
 		self.cmd_control = BoundFileBox(self.panel, -1, "Cmds", "Read cmd", 
-										  "Write cmd", "read.exe", "write.exe")
+						"Write cmd", readcmd, writecmd)
 										  
 		[RC, WC] = self.cmd_control.manual_value()
 		self.dataread.set_readcmd(RC)
@@ -452,10 +508,10 @@ class GraphFrame(wx.Frame):
 		pylab.setp(self.axes2.get_xticklabels(), 
 			visible=self.cb_xlab.IsChecked())
 		
-		self.plot_data.set_xdata(self.time)
+		self.plot_data.set_xdata(self.time/1000)
 		self.plot_data.set_ydata(self.data)
 		
-		self.plot_data2.set_xdata(self.time)
+		self.plot_data2.set_xdata(self.time/1000)
 		self.plot_data2.set_ydata(self.data2)
 		
 		self.canvas.draw()
@@ -502,8 +558,23 @@ class GraphFrame(wx.Frame):
 		
 		if dlg.ShowModal() == wx.ID_OK:
 			path = dlg.GetPath()
-			np.savez(path, ch1=self.data, ch2=self.data2, dtype=np.int32)
+			np.savez(path, ch1=self.data, ch2=self.data2, time=self.time)
 			self.flash_status_message("Data saved to %s" % path)
+
+	def on_save_config(self, event):
+		file_choices = "INI (*.ini)|*.ini"
+		dlg = wx.FileDialog(self, 
+				    message="Save configuration as...",
+				    defaultDir=os.getcwd(),
+				    defaultFile="helicopter.ini",
+				    wildcard=file_choices,
+				    style=wx.SAVE)
+		
+		if dlg.ShowModal() == wx.ID_OK:
+			path = dlg.GetPath()
+			with open(path, 'wb') as configfile:
+				self.config.write(configfile)
+			self.flash_status_message("Config saved to %s" % path)
 		
 	def on_redraw_timer(self, event):
 		# if paused do not add data, but still redraw the plot
@@ -512,14 +583,26 @@ class GraphFrame(wx.Frame):
 		[RC, WC] = self.cmd_control.manual_value()
 		if(RC != self.dataread.get_readcmd()):
 			self.dataread.set_readcmd(RC)
+			self.config.set('cmds', 'readcmd', RC)
+
+		if(WC != self.datawrite.get_writecmd()):
+			self.datawrite.set_writecmd(RC)
+			self.config.set('cmds', 'writecmd', WC)
 		if not self.paused:
-			[self.data, self.data2, self.time] = self.dataread.update(2, 3, self.redraw_timer.GetInterval())
+			ch1 = self.config.getint('channels', 'ch1') - 1
+			ch2 = self.config.getint('channels', 'ch2') - 1
+			Ach1 = self.config.get('channels', 'Ach1')
+			Ach2 = self.config.get('channels', 'Ach2')
+			[self.data, self.data2, self.time] = self.dataread.update(ch1, ch2, self.redraw_timer.GetInterval(), eval(Ach1), eval(Ach2))
 		self.draw_plot()
 		
 		[Period, Duration] = self.pulse_control.manual_value()
 		if self.redraw_timer.GetInterval() != Period:
 			self.redraw_timer.Stop()
 			self.redraw_timer.Start(float(Period)*1000)
+			self.config.set('pulse', 'period', str(Period))
+		if self.config.getfloat('pulse', 'duration') != Duration:
+			self.config.set('pulse', 'duration', str(Duration))
 	
 	def on_exit(self, event):
 		self.Destroy()
