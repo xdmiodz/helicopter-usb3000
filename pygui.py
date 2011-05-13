@@ -62,7 +62,7 @@ class DataGen(object):
 		print 'ch' + str(int(ch1+1)) + ' = ' + str(int(ch1nval)) + ' V/m'
 		print 'ch' + str(int(ch2+1)) + ' = ' + str(int(ch2nval)) + ' V/m'
 		self.ch1 = np.append(self.ch1, [int(ch1nval)])
-		self.ch2 = np.append(self.ch2, [(ch2nval)])
+		self.ch2 = np.append(self.ch2, [int(ch2nval)])
 		l = np.size(self.time)
 		if l==0:
 			lastt = 0
