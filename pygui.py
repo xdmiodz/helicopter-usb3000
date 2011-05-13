@@ -44,8 +44,8 @@ class DataGen(object):
 	"""
 	def __init__(self):
 		self.readcmd = ''
-		self.ch1 = np.array([])
-		self.ch2 = np.array([])
+		self.ch1 = np.array([], dtype=np.int32)
+		self.ch2 = np.array([], dtype=np.int32)
 		self.time = np.array([])
 		
 	def update(self, ch1, ch2, pulse_period):
@@ -55,9 +55,14 @@ class DataGen(object):
 		r = subprocess.call(args)
 		t=np.fromfile(fromfile, dtype=pylab.int16)
 		l = np.size(t)
-		print l
-		self.ch1 = np.append(self.ch1, [np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))])
-		self.ch2 = np.append(self.ch2, [np.mean(np.array([t[4*i+ch2] for i in xrange(int(l/4))]))])
+		ch1nval = (1525/1572.8)*(837/664.5)*5*2000*np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))/8192/1.024
+		ch2nval = (837/799.8)*5*330*np.mean(np.array([t[4*i+ch2] for i in xrange(int(l/4))]))/8192
+		#ch1nval = (837/664.5)*5*2000*np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))/8192
+		#ch2nval = (837/799.8)*5*330*np.mean(np.array([t[4*i+ch2] for i in xrange(int(l/4))]))/8192
+		print 'ch' + str(int(ch1+1)) + ' = ' + str(int(ch1nval)) + ' V/m'
+		print 'ch' + str(int(ch2+1)) + ' = ' + str(int(ch2nval)) + ' V/m'
+		self.ch1 = np.append(self.ch1, [int(ch1nval)])
+		self.ch2 = np.append(self.ch2, [(ch2nval)])
 		l = np.size(self.time)
 		if l==0:
 			lastt = 0
@@ -223,8 +228,8 @@ class GraphFrame(wx.Frame):
 	def __init__(self):
 		wx.Frame.__init__(self, None, -1, self.title)
 		self.dataread = DataGen()
-		self.data = np.array([0])
-		self.data2 = np.array([0])
+		self.data = np.array([0],dtype=np.int32)
+		self.data2 = np.array([0], dtype=np.int32)
 		self.time = np.array([0])
 		self.paused = False
 		
@@ -447,10 +452,10 @@ class GraphFrame(wx.Frame):
 		pylab.setp(self.axes2.get_xticklabels(), 
 			visible=self.cb_xlab.IsChecked())
 		
-		self.plot_data.set_xdata(np.array(range(np.size(self.data))))
+		self.plot_data.set_xdata(self.time)
 		self.plot_data.set_ydata(self.data)
 		
-		self.plot_data2.set_xdata(np.array(range(np.size(self.data))))
+		self.plot_data2.set_xdata(self.time)
 		self.plot_data2.set_ydata(self.data2)
 		
 		self.canvas.draw()
@@ -497,7 +502,7 @@ class GraphFrame(wx.Frame):
 		
 		if dlg.ShowModal() == wx.ID_OK:
 			path = dlg.GetPath()
-			np.savez(path, ch1=self.data, ch2=self.data2, time=self.time)
+			np.savez(path, ch1=self.data, ch2=self.data2, dtype=np.int32)
 			self.flash_status_message("Data saved to %s" % path)
 		
 	def on_redraw_timer(self, event):
@@ -508,7 +513,7 @@ class GraphFrame(wx.Frame):
 		if(RC != self.dataread.get_readcmd()):
 			self.dataread.set_readcmd(RC)
 		if not self.paused:
-			[self.data, self.data2, self.time] = self.dataread.update(0, 1, self.redraw_timer.GetInterval())
+			[self.data, self.data2, self.time] = self.dataread.update(2, 3, self.redraw_timer.GetInterval())
 		self.draw_plot()
 		
 		[Period, Duration] = self.pulse_control.manual_value()
