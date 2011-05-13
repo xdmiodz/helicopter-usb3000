@@ -24,6 +24,17 @@ import random
 import sys
 import wx
 import ConfigParser
+import atexit, shutil, datetime
+from guidata.dataset.datatypes import DataSet, BeginGroup, EndGroup
+from guidata.dataset.dataitems import (FloatItem, IntItem, BoolItem, ChoiceItem,
+				       MultipleChoiceItem, ImageChoiceItem, FilesOpenItem,
+				       StringItem, TextItem, ColorItem, FileSaveItem,
+				       FileOpenItem, DirectoryItem, FloatArrayItem,
+				       DateItem, DateTimeItem, DataItem)
+
+from guidata.dataset.qtwidgets import DataSetEditLayout, DataSetShowLayout, LineEditWidget
+from guidata.dataset.qtitemwidgets import LineEditWidget, DataSetWidget
+import guidata
 
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
@@ -38,6 +49,33 @@ import numpy as np
 import pylab
 import subprocess
 import tempfile
+
+class EvalStringItem(StringItem):
+	def check_value(self, value):
+		try:
+			val = eval(value)
+		except:
+			return False
+		return bool(value) and (str(eval(value))).isdigit() 
+
+class TestParameters(DataSet):
+	_bg = BeginGroup("R/W Commands")
+	readcmd = FileOpenItem("Reading command", "npz", "")
+	writecmd = FileOpenItem("Writing command", "npz", "")
+	_eg = EndGroup("R/W Commands")
+	
+	_bg = BeginGroup("Channels")
+	ch1n = IntItem("Channel #1", default=3, min=1, max=4)
+	ach1n = StringItem("K1", default="1").set_pos(col=1)
+	ch2n = IntItem("Channel #2", default=4, min=1, max=4)
+	ach2n = EvalStringItem("K2", default="1").set_pos(col=1)
+	_eg = EndGroup("Channels")
+
+	_bg = BeginGroup("Pulse")
+	period = FloatItem("Period", min=0.5, default = 1.0, help="Time between two sequential clock pulse")
+	duaration = FloatItem("Duration", min=0.5, max = period, default = 0.7, help="Duaration of the clock pulse")
+	syncch =  IntItem("#Sync channel", default=1, min=1, max=2, help="The sync DAC channel")
+	_eg = EndGroup("Pulse")
 
 class DataWrite(object):
 	""" Class to write data to usb3000
@@ -252,6 +290,7 @@ class GraphFrame(wx.Frame):
 			self.config=self.make_default_config()
 			with open(default_config, 'wb') as configfile:
 				self.config.write(configfile)
+		self.e = TestParameters()
 		self.dataread = DataGen()
 		self.datawrite = DataWrite()
 		self.data = np.array([0],dtype=np.int32)
@@ -338,6 +377,9 @@ class GraphFrame(wx.Frame):
 		self.Bind(wx.EVT_BUTTON, self.on_pause_button, self.pause_button)
 		self.Bind(wx.EVT_UPDATE_UI, self.on_update_pause_button, self.pause_button)
 		
+		self.config_button = wx.Button(self.panel, -1, "Configuration")
+		self.Bind(wx.EVT_BUTTON, self.on_config_button, self.config_button)
+
 		self.cb_grid = wx.CheckBox(self.panel, -1, 
 			"Show Grid",
 			style=wx.ALIGN_RIGHT)
@@ -352,6 +394,8 @@ class GraphFrame(wx.Frame):
 		
 		self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
 		self.hbox1.Add(self.pause_button, border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+		self.hbox1.AddSpacer(20)
+		self.hbox1.Add(self.config_button, border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
 		self.hbox1.AddSpacer(20)
 		self.hbox1.Add(self.cb_grid, border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
 		self.hbox1.AddSpacer(10)
@@ -387,6 +431,14 @@ class GraphFrame(wx.Frame):
 		
 		self.panel.SetSizer(self.vbox)
 		self.vbox.Fit(self)
+
+	def on_config_button(self, event):
+		self.paused=True
+		self.on_update_pause_button(event)
+		if self.e.edit():
+			print 'e was updated'
+		self.paused=False
+		self.on_update_pause_button(event)
 	
 	def create_status_bar(self):
 		self.statusbar = self.CreateStatusBar()
@@ -621,6 +673,9 @@ class GraphFrame(wx.Frame):
 
 
 if __name__ == '__main__':
+	_app = guidata.qapplication()
+	DataSetEditLayout.register(EvalStringItem, LineEditWidget)
+	DataSetShowLayout.register(EvalStringItem, LineEditWidget)
 	app = wx.PySimpleApp()
 	app.frame = GraphFrame()
 	app.frame.Show()
