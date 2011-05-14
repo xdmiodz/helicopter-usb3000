@@ -83,7 +83,7 @@ class DataWrite(object):
 	def writedata(self, writecmd, channel, duration):
 		normcmd = os.path.normpath(writecmd)
 		args = [normcmd, str(duration), str(channel)]
-		print 'run write cmd: ' + str(args)
+		print 'write to DAC'
 		r = subprocess.call(args)
 
 class DataGen(object):
@@ -99,6 +99,7 @@ class DataGen(object):
 		fromfile =  tempfile.mktemp()
 		normcmd = os.path.normpath(readcmd)
 		args = [normcmd, fromfile]
+		print 'read from ADC'
 		r = subprocess.call(args)
 		t=np.fromfile(fromfile, dtype=pylab.int16)
 		l = np.size(t)
@@ -277,10 +278,12 @@ class GraphFrame(wx.Frame):
 		self.config = ConfigParser.RawConfigParser()
 		default_config = os.getcwd() + '/helicopter.ini'
 		self.e = TestParameters()
-		if os.path.isfile == True:
-			config.read(defaul_config)
+		if os.path.isfile(default_config):
+			self.config.read(default_config)
+			self.copy_dataset_from_configparser()
 		else:
 			self.config=self.make_default_config()
+			self.copy_dataset_from_configparser()
 			with open(default_config, 'wb') as configfile:
 				self.config.write(configfile)
 		self.dataread = DataGen()
@@ -332,21 +335,20 @@ class GraphFrame(wx.Frame):
 		config.add_section('autosave')
 		config.set('autosave', 'on', 'true')
 		config.set('autosave', 'timer', '30')
-		
-		self.e.readcmd = config.get('cmds', 'readcmd')
-		self.e.writecmd = config.get('cmds', 'writecmd')
-		
-		self.e.duration = config.get('pulse', 'duration')
-		self.e.period = config.get('pulse', 'period')
-		self.e.syncch = config.get('pulse', 'syncch')
-		
-		self.e.ch1n = config.get('channels', 'ch1')
-		self.e.ch2n = config.get('channels', 'ch2')
-		self.e.ach1n = config.get('channels', 'ach1')
-		self.e.ach2n = config.get('channels', 'ach2')
-		
 		return config
 		
+	def copy_dataset_from_configparser(self):
+		self.e.readcmd = self.config.get('cmds', 'readcmd')
+		self.e.writecmd = self.config.get('cmds', 'writecmd')
+		
+		self.e.duration = self.config.get('pulse', 'duration')
+		self.e.period = self.config.get('pulse', 'period')
+		self.e.syncch = self.config.get('pulse', 'syncch')
+		
+		self.e.ch1n = self.config.get('channels', 'ch1')
+		self.e.ch2n = self.config.get('channels', 'ch2')
+		self.e.ach1n = self.config.get('channels', 'ach1')
+		self.e.ach2n = self.config.get('channels', 'ach2')
 
 	def create_menu(self):
 		self.menubar = wx.MenuBar()

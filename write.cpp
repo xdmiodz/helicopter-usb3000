@@ -78,9 +78,9 @@ void main(int argc, char* argv[])
 		PulseDuration = atof(argv[1]);
 		DacNumber = (WORD)atoi(argv[2]);	
 		WORD i;
-		printf(" *******************************************\n");
-		printf(" Console example of Data Writing to USB3000 \n");
-		printf(" *******************************************\n\n");
+		//printf(" *******************************************\n");
+		//printf(" Console example of Data Writing to USB3000 \n");
+		//printf(" *******************************************\n\n");
 		
 		// проверим версию используемой библиотеки Rtusbapi.dll
 		if((DllVersion = RtGetDllVersion()) != CURRENT_VERSION_RTUSBAPI) 
@@ -128,7 +128,7 @@ void main(int argc, char* argv[])
 		if(!pModule->GetAvrVersion(AvrVersion)) TerminateApplication(" GetAvrVersion() --> Bad\n");
 		//else printf(" GetAvrVersion() --> OK\n");
 		// теперь отобразим версию драйвера AVR
-		printf(" Avr Driver Version is %s\n", AvrVersion);
+		//printf(" Avr Driver Version is %s\n", AvrVersion);
 
 		// прочитаем ППЗУ
 		fi.size = sizeof(RTUSB3000::FLASH);
@@ -414,7 +414,7 @@ void TerminateApplication(char *ErrorString, bool TerminationFlag)
 		{ 
 				// освободим интерфейс модуля
 				if(!pModule->ReleaseInstance()) printf(" ReleaseInstance() --> Bad\n"); 
-				else printf(" ReleaseInstance() --> OK\n");
+				//else printf(" ReleaseInstance() --> OK\n");
 				// обнулим указатель на интерфейс модуля
 				pModule = NULL; 
 		}
@@ -425,7 +425,7 @@ void TerminateApplication(char *ErrorString, bool TerminationFlag)
 		if(hWriteThread) { CloseHandle(hWriteThread); hWriteThread = NULL; }
 
 		// выводим текст сообщения
-		if(ErrorString) printf(ErrorString);
+		//if(ErrorString) printf(ErrorString);
 
 		// если нужно - аварийно завершаем программу
 		if(TerminationFlag) exit(1);

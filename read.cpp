@@ -74,9 +74,9 @@ void main(int argc, char* argv[])
 		LPWSTR wsavefile = new WCHAR[iSize];
 		MultiByteToWideChar(CP_ACP, 0, argv[1], -1, wsavefile, iSize);
 
-		printf(" **********************************************\n");
-		printf(" Data Reading Console from USB3000 unit \n");
-		printf(" **********************************************\n\n");
+		//printf(" **********************************************\n");
+		//printf(" Data Reading Console from USB3000 unit \n");
+		//printf(" **********************************************\n\n");
 
 		// проверим версию используемой библиотеки Rtusbapi.dll
 		if((DllVersion = RtGetDllVersion()) != CURRENT_VERSION_RTUSBAPI) 
@@ -88,7 +88,7 @@ void main(int argc, char* argv[])
 		
 				TerminateApplication(String);
 		}		
-		else printf(" Rtusbapi.dll Version --> OK\n");
+		//else printf(" Rtusbapi.dll Version --> OK\n");
 
 		// получим указатель на интерфейс модул€ USB3000
 		pModule = static_cast<IRTUSB3000 *>(RtCreateInstance("usb3000"));
@@ -108,7 +108,7 @@ void main(int argc, char* argv[])
 
 		// прочитаем название обнаруженного модул€
 		if(!pModule->GetModuleName(ModuleName)) TerminateApplication(" GetModuleName() --> Bad\n");
-		else printf(" GetModuleName() --> OK\n");
+		//else printf(" GetModuleName() --> OK\n");
 
 		// проверим, что это 'USB3000'
 		if(strcmp(ModuleName, "USB3000")) TerminateApplication(" The module is not 'USB3000'\n");
@@ -116,7 +116,7 @@ void main(int argc, char* argv[])
 
 		// узнаем текущую скорость работы шины USB20
 		if(!pModule->GetUsbSpeed(&UsbSpeed)) TerminateApplication(" GetUsbSpeed() --> Bad\n");
-		else printf(" GetUsbSpeed() --> OK\n");
+		//else printf(" GetUsbSpeed() --> OK\n");
 		// теперь отобразим версию драйвера AVR
 		//printf(" USB Speed is %s\n", UsbSpeed ? "HIGH (480 Mbit/s)" : "FULL (12 Mbit/s)");
 
@@ -176,7 +176,7 @@ void main(int argc, char* argv[])
 		for(i = 0x0; i < 8; i++) { ip.AdcOffsetCoef[i] = fi.AdcOffsetCoef[i]; ip.AdcScaleCoef[i] = fi.AdcScaleCoef[i]; }
 		// передадим требуемые параметры работы ј÷ѕ в модуль
 		if(!pModule->SET_INPUT_PARS(&ip)) TerminateApplication(" SET_INPUT_PARS() --> Bad\n");
-		else printf(" SET_INPUT_PARS() --> OK\n");
+		//else printf(" SET_INPUT_PARS() --> OK\n");
 
 		// отобразим на экране диспле€ параметры работы модул€ USB3000
 		//printf(" \n");
@@ -397,7 +397,7 @@ void TerminateApplication(char *ErrorString, bool TerminationFlag)
 		{ 
 				// освободим интерфейс модул€
 				if(!pModule->ReleaseInstance()) printf(" ReleaseInstance() --> Bad\n"); 
-				else printf(" ReleaseInstance() --> OK\n");
+				//else printf(" ReleaseInstance() --> OK\n");
 				// обнулим указатель на интерфейс модул€
 				pModule = NULL; 
 		}
@@ -410,7 +410,7 @@ void TerminateApplication(char *ErrorString, bool TerminationFlag)
 		if(hFile != INVALID_HANDLE_VALUE) { CloseHandle(hFile); hFile = INVALID_HANDLE_VALUE; }
 
 		// выводим текст сообщени€
-		if(ErrorString) printf(ErrorString);
+		//if(ErrorString) printf(ErrorString);
 
 		// если нужно - аварийно завершаем программу
 		if(TerminationFlag) exit(1);
