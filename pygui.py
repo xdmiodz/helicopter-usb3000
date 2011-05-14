@@ -53,68 +53,60 @@ import tempfile
 class EvalStringItem(StringItem):
 	def check_value(self, value):
 		try:
-			val = eval(value)
+			val = eval(str(value))
 		except:
 			return False
-		return bool(value) and (str(eval(value))).isdigit() 
+		return (str(int(float(val)))).isdigit() 
 
 class TestParameters(DataSet):
 	_bg = BeginGroup("R/W Commands")
-	readcmd = FileOpenItem("Reading command", "npz", "")
-	writecmd = FileOpenItem("Writing command", "npz", "")
+	readcmd = FileOpenItem("Reading command", "exe", "")
+	writecmd = FileOpenItem("Writing command", "exe", "")
 	_eg = EndGroup("R/W Commands")
 	
 	_bg = BeginGroup("Channels")
 	ch1n = IntItem("Channel #1", default=3, min=1, max=4)
-	ach1n = StringItem("K1", default="1").set_pos(col=1)
+	ach1n = EvalStringItem("K1", default="1").set_pos(col=1)
 	ch2n = IntItem("Channel #2", default=4, min=1, max=4)
 	ach2n = EvalStringItem("K2", default="1").set_pos(col=1)
 	_eg = EndGroup("Channels")
 
 	_bg = BeginGroup("Pulse")
 	period = FloatItem("Period", min=0.5, default = 1.0, help="Time between two sequential clock pulse")
-	duaration = FloatItem("Duration", min=0.5, max = period, default = 0.7, help="Duaration of the clock pulse")
+	duration = FloatItem("Duration", min=0.5, max = period, default = 0.7, help="Duaration of the clock pulse")
 	syncch =  IntItem("#Sync channel", default=1, min=1, max=2, help="The sync DAC channel")
 	_eg = EndGroup("Pulse")
 
 class DataWrite(object):
 	""" Class to write data to usb3000
 	"""
-	def __init__(self):
-		self.writecmd = ''
-	def writedata(self, channel, duration):
-		normcmd = os.path.normpath(self.writecmd)
+	def writedata(self, writecmd, channel, duration):
+		normcmd = os.path.normpath(writecmd)
 		args = [normcmd, str(duration), str(channel)]
-		r = subprocess.Popen(args)
-		
-	def set_writecmd(self, writecmd):
-		self.writecmd = writecmd
-	
-	def get_writecmd(self):
-		return self.writecmd
+		print 'run write cmd: ' + str(args)
+		r = subprocess.call(args)
 
 class DataGen(object):
 	""" Class to read data from usb300
 		and save it to the internal varibale or a file
 	"""
 	def __init__(self):
-		self.readcmd = ''
 		self.ch1 = np.array([], dtype=np.int32)
 		self.ch2 = np.array([], dtype=np.int32)
 		self.time = np.array([])
 		
-	def update(self, ch1, ch2, pulse_period, Ach1, Ach2):
+	def update(self, readcmd, ch1, ch2, pulse_period, Ach1, Ach2):
 		fromfile =  tempfile.mktemp()
-		normcmd = os.path.normpath(self.readcmd)
+		normcmd = os.path.normpath(readcmd)
 		args = [normcmd, fromfile]
-		#r = subprocess.call(args)
-		#t=np.fromfile(fromfile, dtype=pylab.int16)
-		#l = np.size(t)
-		l = 0
-		ch1nval = 1
-		ch2nval = 2
-		#ch1nval = Ach1*np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))
-		#ch2nval = Ach2*5*330*np.mean(np.array([t[4*i+ch2] for i in xrange(int(l/4))]))
+		r = subprocess.call(args)
+		t=np.fromfile(fromfile, dtype=pylab.int16)
+		l = np.size(t)
+		#l = 0
+		#ch1nval = 1
+		#ch2nval = 2
+		ch1nval = Ach1*np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))
+		ch2nval = Ach2*np.mean(np.array([t[4*i+ch2] for i in xrange(int(l/4))]))
 		#ch1nval = (837/664.5)*5*2000*np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))/8192/1.024
 		#ch2nval = (837/799.8)*5*330*np.mean(np.array([t[4*i+ch2] for i in xrange(int(l/4))]))/8192
 		print 'ch' + str(int(ch1+1)) + ' = ' + str(int(ch1nval)) + ' V/m'
@@ -128,7 +120,7 @@ class DataGen(object):
 			lastt=self.time[l-1]
 		
 		self.time = np.append(self.time, [lastt + pulse_period])
-		#os.remove(fromfile)
+		os.remove(fromfile)
 		return [self.ch1, self.ch2, self.time]
 		 
 		
@@ -284,13 +276,13 @@ class GraphFrame(wx.Frame):
 		wx.Frame.__init__(self, None, -1, self.title)
 		self.config = ConfigParser.RawConfigParser()
 		default_config = os.getcwd() + '/helicopter.ini'
+		self.e = TestParameters()
 		if os.path.isfile == True:
 			config.read(defaul_config)
 		else:
 			self.config=self.make_default_config()
 			with open(default_config, 'wb') as configfile:
 				self.config.write(configfile)
-		self.e = TestParameters()
 		self.dataread = DataGen()
 		self.datawrite = DataWrite()
 		self.data = np.array([0],dtype=np.int32)
@@ -304,9 +296,20 @@ class GraphFrame(wx.Frame):
 		
 		self.redraw_timer = wx.Timer(self)
 		self.Bind(wx.EVT_TIMER, self.on_redraw_timer, self.redraw_timer)	
-		self.redraw_timer.Start(float(self.config.get('pulse', 'period'))*1000)
-		self.dataread.set_readcmd(self.config.get('cmds', 'readcmd'))
-		self.datawrite.set_writecmd(self.config.get('cmds', 'writecmd'))
+		self.redraw_timer.Start(int(float(self.e.period)*1000))
+	
+	def on_update_config(self):
+		self.config.set('cmds', 'readcmd', self.e.readcmd)
+		self.config.set('cmds', 'writecmd', self.e.writecmd)
+		
+		self.config.set('pulse', 'duration', self.e.duration)
+		self.config.set('pulse', 'period', self.e.period)
+		self.config.set('pulse', 'syncch', self.e.syncch)
+		
+		self.config.set('channels', 'ch1', self.e.ch1n)
+		self.config.set('channels', 'ch2', self.e.ch2n)
+		self.config.set('channels', 'ach1', self.e.ach1n)
+		self.config.set('channels', 'ach2', self.e.ach2n)
 		
 	def make_default_config(self):
 		config = ConfigParser.RawConfigParser()
@@ -314,6 +317,7 @@ class GraphFrame(wx.Frame):
 		config.add_section('pulse')
 		config.set('pulse', 'period', '10.0')
 		config.set('pulse', 'duration', '0.7')
+		config.set('pulse', 'syncch', '1')
 		
 		config.add_section('cmds')
 		config.set('cmds', 'readcmd', 'read_usb3000.exe')
@@ -322,12 +326,24 @@ class GraphFrame(wx.Frame):
 		config.add_section('channels')
 		config.set('channels', 'ch1', '3')
 		config.set('channels', 'ch2', '4')
-		config.set('channels', 'Ach1', '(1525/1572.8)*(837/664.5)*5*2000/8192/1.024')
-		config.set('channels', 'Ach2', '(837/799.8)*5*330/8192')
+		config.set('channels', 'ach1', '(1525/1572.8)*(837/664.5)*5*2000/8192/1.024')
+		config.set('channels', 'ach2', '(837/799.8)*5*330/8192')
 		
 		config.add_section('autosave')
 		config.set('autosave', 'on', 'true')
 		config.set('autosave', 'timer', '30')
+		
+		self.e.readcmd = config.get('cmds', 'readcmd')
+		self.e.writecmd = config.get('cmds', 'writecmd')
+		
+		self.e.duration = config.get('pulse', 'duration')
+		self.e.period = config.get('pulse', 'period')
+		self.e.syncch = config.get('pulse', 'syncch')
+		
+		self.e.ch1n = config.get('channels', 'ch1')
+		self.e.ch2n = config.get('channels', 'ch2')
+		self.e.ach1n = config.get('channels', 'ach1')
+		self.e.ach2n = config.get('channels', 'ach2')
 		
 		return config
 		
@@ -435,10 +451,10 @@ class GraphFrame(wx.Frame):
 	def on_config_button(self, event):
 		self.paused=True
 		self.on_update_pause_button(event)
-		if self.e.edit():
-			print 'e was updated'
+		self.e.edit()
 		self.paused=False
 		self.on_update_pause_button(event)
+		self.on_update_config()
 	
 	def create_status_bar(self):
 		self.statusbar = self.CreateStatusBar()
@@ -632,29 +648,23 @@ class GraphFrame(wx.Frame):
 		# if paused do not add data, but still redraw the plot
 		# (to respond to scale modifications, grid change, etc.)
 		#
-		[RC, WC] = self.cmd_control.manual_value()
-		if(RC != self.dataread.get_readcmd()):
-			self.dataread.set_readcmd(RC)
-			self.config.set('cmds', 'readcmd', RC)
 
-		if(WC != self.datawrite.get_writecmd()):
-			self.datawrite.set_writecmd(RC)
-			self.config.set('cmds', 'writecmd', WC)
 		if not self.paused:
 			ch1 = self.config.getint('channels', 'ch1') - 1
 			ch2 = self.config.getint('channels', 'ch2') - 1
-			Ach1 = self.config.get('channels', 'Ach1')
-			Ach2 = self.config.get('channels', 'Ach2')
-			[self.data, self.data2, self.time] = self.dataread.update(ch1, ch2, self.redraw_timer.GetInterval(), eval(Ach1), eval(Ach2))
+			Ach1 = eval(self.config.get('channels', 'Ach1'))
+			Ach2 = eval(self.config.get('channels', 'Ach2'))
+			readcmd = self.config.get('cmds','readcmd')
+			writecmd = self.config.get('cmds','writecmd')
+			syncch = self.config.getint('pulse', 'syncch')
+			duration = self.config.getfloat('pulse', 'duration')*1000
+			self.datawrite.writedata(writecmd, syncch, duration)
+			[self.data, self.data2, self.time] = self.dataread.update(readcmd, ch1, ch2, self.redraw_timer.GetInterval(), Ach1, Ach2)
 		self.draw_plot()
 		
-		[Period, Duration] = self.pulse_control.manual_value()
-		if self.redraw_timer.GetInterval() != Period:
+		if self.redraw_timer.GetInterval() != int(float(self.e.period)*1000):
 			self.redraw_timer.Stop()
-			self.redraw_timer.Start(float(Period)*1000)
-			self.config.set('pulse', 'period', str(Period))
-		if self.config.getfloat('pulse', 'duration') != Duration:
-			self.config.set('pulse', 'duration', str(Duration))
+			self.redraw_timer.Start(int(float(self.e.period)*1000))
 	
 	def on_exit(self, event):
 		self.Destroy()

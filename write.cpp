@@ -43,7 +43,7 @@ RTUSB3000::DSP_INFO di;
 RTUSB3000::OUTPUT_PARS dp;
 
 //max возможное кол-во передаваемых отсчетов (кратное 32) для ф. ReadData и WriteData()
-DWORD DataStep = 8*1024;
+DWORD DataStep = 2*1024;
 // длина буфера для выводимых данных
 DWORD WritePoints = 2*DataStep;
 // указатель на буфер для выводимых данных
@@ -54,7 +54,7 @@ SHORT DacSample;
 // номер канала ЦАП
 WORD DacNumber = 0x0;
 // частота  вывода данных
-const double WriteRate = 100.0;
+const double WriteRate = 10.0;
 
 // параметры выводимого сигнала
 double CurrentTime = 0.0; 			  				// в млс
@@ -75,13 +75,9 @@ bool IsThreadComplete = false;
 //------------------------------------------------------------------------
 void main(int argc, char* argv[])
 {
-<<<<<<< .mine		WORD i;
 		PulseDuration = atof(argv[1]);
-		DacNumber = (WORD)atoi(argv[2]);
-=======		WORD i;
-		PulseDuration = atof(argv[1]);
->>>>>>> .theirs		
-		
+		DacNumber = (WORD)atoi(argv[2]);	
+		WORD i;
 		printf(" *******************************************\n");
 		printf(" Console example of Data Writing to USB3000 \n");
 		printf(" *******************************************\n\n");
@@ -96,81 +92,81 @@ void main(int argc, char* argv[])
 				
 				TerminateApplication(String);
 		}		
-		else printf(" Rtusbapi.dll Version --> OK\n");
+		//else printf(" Rtusbapi.dll Version --> OK\n");
 		
 		// получим указатель на интерфейс модуля USB3000
 		pModule = static_cast<IRTUSB3000 *>(RtCreateInstance("usb3000"));
 		if(pModule == NULL)  TerminateApplication(" Module Interface --> Bad\n");
-		else printf(" Module Interface --> OK\n");
+		//else printf(" Module Interface --> OK\n");
 
 		// попробуем обнаружить модуль USB3000 в первых 127 виртуальных слотах
 		for(i = 0x0; i < MaxVirtualSoltsQuantity; i++) if(pModule->OpenDevice(i)) break;
 		// что-нибудь обнаружили?
 		if(i == MaxVirtualSoltsQuantity) TerminateApplication(" Can't find module USB3000 in first 127 virtual slots!\n");
-		else printf(" OpenDevice(%u) --> OK\n", i);
+		//else printf(" OpenDevice(%u) --> OK\n", i);
 
 		// прочитаем название обнаруженного модуля
 		if(!pModule->GetModuleName(ModuleName)) TerminateApplication(" GetModuleName() --> Bad\n");
-		else printf(" GetModuleName() --> OK\n");
+		//else printf(" GetModuleName() --> OK\n");
 		// проверим, что это 'USB3000'
 		if(strcmp(ModuleName, "USB3000")) TerminateApplication(" The module is not 'USB3000'\n");
-		else printf(" The module is 'USB3000'\n");
+		//else printf(" The module is 'USB3000'\n");
 
 		// узнаем текущую скорость работы шины USB20
 		if(!pModule->GetUsbSpeed(&UsbSpeed)) { printf(" GetUsbSpeed() --> Bad\n"); exit(1); }
-		else printf(" GetUsbSpeed() --> OK\n");
+		//else printf(" GetUsbSpeed() --> OK\n");
 		// теперь отобразим версию драйвера AVR
-		printf(" USB Speed is %s\n", UsbSpeed ? "HIGH (480 Mbit/s)" : "FULL (12 Mbit/s)");
+		//printf(" USB Speed is %s\n", UsbSpeed ? "HIGH (480 Mbit/s)" : "FULL (12 Mbit/s)");
 
 		// прочитаем серийный номер модуля
 		if(!pModule->GetModuleSerialNumber(ModuleSerialNumber)) TerminateApplication(" GetModuleSerialNumber() --> Bad\n");
-		else printf(" GetModuleSerialNumber() --> OK\n");
+		//else printf(" GetModuleSerialNumber() --> OK\n");
 		// теперь отобразим серийный номер модуля
-		printf(" Module Serial Number is %s\n", ModuleSerialNumber);
+		//printf(" Module Serial Number is %s\n", ModuleSerialNumber);
 
 		// прочитаем версию драйвера AVR
 		if(!pModule->GetAvrVersion(AvrVersion)) TerminateApplication(" GetAvrVersion() --> Bad\n");
-		else printf(" GetAvrVersion() --> OK\n");
+		//else printf(" GetAvrVersion() --> OK\n");
 		// теперь отобразим версию драйвера AVR
 		printf(" Avr Driver Version is %s\n", AvrVersion);
 
 		// прочитаем ППЗУ
 		fi.size = sizeof(RTUSB3000::FLASH);
 		if(!pModule->GET_FLASH(&fi)) TerminateApplication(" GET_FLASH() --> Bad\n");
-		else printf(" GET_FLASH() --> OK\n");
+		//else printf(" GET_FLASH() --> OK\n");
 
 		// код драйвера DSP возьмём из соответствующего ресурса штатной DLL библиотеки
 		if(!pModule->LOAD_DSP()) TerminateApplication(" LOAD_DSP() --> Bad\n");
-		else printf(" LOAD_DSP() --> OK\n");
+		//else printf(" LOAD_DSP() --> OK\n");
 
 		// проверим загрузку модуля
 		if(!pModule->MODULE_TEST()) TerminateApplication(" MODULE_TEST() --> Bad\n");
-		else printf(" MODULE_TEST() --> OK\n");
+		//else printf(" MODULE_TEST() --> OK\n");
 
 		// получим информацию об загруженном драйвере DSP
 		if(!pModule->GET_DSP_INFO(&di)) TerminateApplication(" GET_DSP_INFO() --> Bad\n");
-		else printf(" GET_DSP_INFO() --> OK\n");
+		//else printf(" GET_DSP_INFO() --> OK\n");
 		// теперь отобразим версию загруженного драйвера DSP
-		printf(" DSP Driver version is %1u.%1u\n", di.DspMajor, di.DspMinor);
+		//printf(" DSP Driver version is %1u.%1u\n", di.DspMajor, di.DspMinor);
 
 		// выведем нулевой отсчёт на первый канал ЦАП
 		DacSample = 0x0;
 		// откалибруем отсчёт для первого канала
 		DacSample = Round((DacSample + fi.DacOffsetCoef[0])*fi.DacScaleCoef[0]);
 		if(!pModule->WRITE_SAMPLE(0x0, &DacSample)) TerminateApplication(" WRITE_SAMPLE(0) --> Bad\n");
-		else printf(" WRITE_SAMPLE(0) --> OK\n");
+		//else printf(" WRITE_SAMPLE(0) --> OK\n");
 
 		// также нулевой отсчёт выведем на второй канал ЦАП
 		DacSample = 0x0;
 		// откалибруем отсчёт для второго канала
 		DacSample = Round((DacSample + fi.DacOffsetCoef[1])*fi.DacScaleCoef[1]);
 		if(!pModule->WRITE_SAMPLE(0x1, &DacSample)) TerminateApplication(" WRITE_SAMPLE(1) --> Bad\n");
-		else printf(" WRITE_SAMPLE(1) --> OK\n");
+		//else printf(" WRITE_SAMPLE(1) --> OK\n");
 
 		// прочитаем текущие параметры вывода данных
 		dp.size = sizeof(RTUSB3000::OUTPUT_PARS);
 		if(!pModule->GET_OUTPUT_PARS(&dp)) TerminateApplication(" GET_OUTPUT_PARS() --> Bad\n");
-		else printf(" GET_OUTPUT_PARS() --> OK\n");
+		//else printf(" GET_OUTPUT_PARS() --> OK\n");
 
 		// установим желаемые параметры вывода данных на модуль USB3000
 		dp.OutputRate = WriteRate;		  			// частота вывода данных в кГц
@@ -179,16 +175,16 @@ void main(int argc, char* argv[])
 
 		// установим требуемые параметры вывода данных
 		if(!pModule->SET_OUTPUT_PARS(&dp)) TerminateApplication(" SET_OUTPUT_PARS() --> Bad\n");
-		else printf(" SET_OUTPUT_PARS() --> OK\n");
+		//else printf(" SET_OUTPUT_PARS() --> OK\n");
 
 		// отобразим на экране монитора параметры работы модуля по выводу данных 
-		printf(" \n");
-		printf(" Module USB3000 (S/N %s) is ready ... \n", ModuleSerialNumber);
-		printf("  Ouput parameters:\n");
-		printf("    WriteRate = %6.1f kHz\n", dp.OutputRate);
-		printf("  Signal parameters:\n");
-		printf("    SignalFrequency  = %2.2f kHz\n", SignalFrequency);
-		printf("    SignalAmplitude  = %1.3f V\n", SignalAmplitude*5.0/2000.0);
+		//printf(" \n");
+		//printf(" Module USB3000 (S/N %s) is ready ... \n", ModuleSerialNumber);
+		//printf("  Ouput parameters:\n");
+		//printf("    WriteRate = %6.1f kHz\n", dp.OutputRate);
+		//printf("  Signal parameters:\n");
+		//printf("    SignalFrequency  = %2.2f kHz\n", SignalFrequency);
+		//printf("    SignalAmplitude  = %1.3f V\n", SignalAmplitude*5.0/2000.0);
 
 		// сбросим флаг ошибок потока ввода данных
 		ThreadErrorNumber = 0x0;
@@ -202,11 +198,11 @@ void main(int argc, char* argv[])
 		if(!hWriteThread) TerminateApplication("Cann't start output data thread!");
 
 		// ждем завершения работы нужного потока
-		printf("\n Now SINUS signal is on the %s DAC channel\n", DacNumber ? "second" : "first");
-		printf(" (you can press any key to terminate the program)\n\n");
+		//printf("\n Now SINUS signal is on the %s DAC channel\n", DacNumber ? "second" : "first");
+		//printf(" (you can press any key to terminate the program)\n\n");
 		while(!IsThreadComplete)
 		{
-				if(OldCounter != Counter) { printf(" Counter %3u\r", Counter); OldCounter = Counter; }
+				if(OldCounter != Counter) { OldCounter = Counter; }
 				else Sleep(0);
 		}
 
@@ -225,7 +221,7 @@ void main(int argc, char* argv[])
 //------------------------------------------------------------------------
 DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 {
-<<<<<<< .mine		WORD RequestNumber;
+		WORD RequestNumber;
 		DWORD i;
 		WORD stop = 0;
 		DWORD BaseIndex;
@@ -235,48 +231,19 @@ DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 		OVERLAPPED WriteOv[2];
 		DWORD BytesTransferred[2];
 		DWORD TimeOut;
-=======		WORD RequestNumber;
-		DWORD i;
-		DWORD BaseIndex;
-		// идентификатор массива их двух событий
-		HANDLE WriteEvent[2];
-		// массив OVERLAPPED структур из двух элементов
-		OVERLAPPED WriteOv[2];
-		DWORD BytesTransferred[2];
-		DWORD TimeOut;
->>>>>>> .theirs
-<<<<<<< .mine		// формируем данные для целого FIFO буфера вывода в модуле (учитывая корректировку)
-		/*for(i = 0x0; i < (DWORD)dp.OutputFifoLength; i++)
-		{
-				if (CurrentTime < PulseDuration)
-				{
-						WriteBuffer[i] = Round((2047.0 + SignalAmplitude + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
-				}
-				else
-				{
-						WriteBuffer[i] = Round((2047.0 + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
-				}
-				//WriteBuffer[i]=Round((2047.0 + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
-				//WriteBuffer[i] &= (WORD)(0xFFF);
-				//WriteBuffer[i] |= (WORD)(DacNumber << 15) | (WORD)(0x1 << 14);
-				WriteBuffer[i] &= (WORD)(0xFFF);
-				WriteBuffer[i] |= (WORD)(DacNumber << 15) | (WORD)(0x1 << 14);
-				CurrentTime += 1.0/dp.OutputRate;
-		}
-		// заполняем целиком FIFO буфер вывода в DSP модуля
-		if(!pModule->PUT_DM_ARRAY(dp.OutputFifoBaseAddress, dp.OutputFifoLength, (SHORT *)WriteBuffer))
-		{ ThreadErrorNumber = 0x1; IsThreadComplete = true; return 1; }
-=======		// формируем данные для целого FIFO буфера вывода в модуле (учитывая корректировку)
+		//формируем данные для целого FIFO буфера вывода в модуле (учитывая корректировку)
 		for(i = 0x0; i < (DWORD)dp.OutputFifoLength; i++)
 		{
-				if (CurrentTime < PulseDuration)
-				{
-						WriteBuffer[i] = Round((2047.0 + SignalAmplitude + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
-				}
-				else
-				{
-						WriteBuffer[i] = Round((2047.0 + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
-				}
+			if (CurrentTime <= PulseDuration)
+								{
+										WriteBuffer[i] = Round((2047.0 + SignalAmplitude + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
+								}
+								if((CurrentTime > PulseDuration) && (CurrentTime <= 2*PulseDuration))
+								{
+										WriteBuffer[i] = Round((2047.0 + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
+								}	
+								
+
 				WriteBuffer[i] &= (WORD)(0xFFF);
 				WriteBuffer[i] |= (WORD)(DacNumber << 15) | (WORD)(0x1 << 14);
 				CurrentTime += 1.0/dp.OutputRate;
@@ -284,39 +251,22 @@ DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 		// заполняем целиком FIFO буфер вывода в DSP модуля
 		if(!pModule->PUT_DM_ARRAY(dp.OutputFifoBaseAddress, dp.OutputFifoLength, (SHORT *)WriteBuffer))
 		{ ThreadErrorNumber = 0x1; IsThreadComplete = true; return 1; }
->>>>>>> .theirs
-<<<<<<< .mine		// теперь формируем выводимые данные для всего буфера WriteBuffer (учитывая корректировку)
+		// теперь формируем выводимые данные для всего буфера WriteBuffer (учитывая корректировку)
 		for(i = 0x0; i < 2*DataStep; i++)
 		{
-				if (CurrentTime < PulseDuration)
-				{
-						WriteBuffer[i] = Round((2047.0 + SignalAmplitude + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
-				}
-				else
-				{
-						WriteBuffer[i] = Round((2047.0 + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
-				}
-				//WriteBuffer[i]=Round((2047.0 + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
-				WriteBuffer[i] &= (WORD)(0xFFF);
-				WriteBuffer[i] |= (WORD)(DacNumber << 15) | (WORD)(0x1 << 14);
-				CurrentTime += 1.0/dp.OutputRate;
-		}*/
-=======		// теперь формируем выводимые данные для всего буфера WriteBuffer (учитывая корректировку)
-		for(i = 0x0; i < 2*DataStep; i++)
-		{
-				if (CurrentTime < PulseDuration)
-				{
-						WriteBuffer[i] = Round((2047.0 + SignalAmplitude + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
-				}
-				else
-				{
-						WriteBuffer[i] = Round((2047.0 + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
-				}
+				if (CurrentTime <= PulseDuration)
+								{
+										WriteBuffer[i] = Round((2047.0 + SignalAmplitude + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
+								}
+								if((CurrentTime > PulseDuration) && (CurrentTime <= 2*PulseDuration))
+								{
+										WriteBuffer[i] = Round((2047.0 + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
+								}	
+								
 				WriteBuffer[i] &= (WORD)(0xFFF);
 				WriteBuffer[i] |= (WORD)(DacNumber << 15) | (WORD)(0x1 << 14);
 				CurrentTime += 1.0/dp.OutputRate;
 		}
->>>>>>> .theirs
 		// остановим вывод данных и одновременно прочистим соответствующий канал bulk USB (PIPE_RESET)
 		if(!pModule->STOP_WRITE()) { ThreadErrorNumber = 0x6; IsThreadComplete = true; return 0; }
 
@@ -337,7 +287,7 @@ DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 		// теперь запускаем собственно сам вывод данных
 		if(pModule->START_WRITE())
 		{
-<<<<<<< .mine				// цикл перманентного вывода данных
+	// цикл перманентного вывода данных
 				for(;;)
 				{
 						
@@ -371,51 +321,17 @@ DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 						// сделаем запрос на вывод очередной порции данных в DSP модуля
 						if(!pModule->WriteData(WriteBuffer + RequestNumber*DataStep, &DataStep, &BytesTransferred[RequestNumber], &WriteOv[RequestNumber]))
 								if(GetLastError() != ERROR_IO_PENDING) { ThreadErrorNumber = 0x2; break; }
-=======				// цикл перманентного вывода данных
-				for(;;)
-				{
-						RequestNumber ^= 0x1;
-						// сделаем запрос на вывод очередной порции данных в DSP модуля
-						if(!pModule->WriteData(WriteBuffer + RequestNumber*DataStep, &DataStep, &BytesTransferred[RequestNumber], &WriteOv[RequestNumber]))
-								if(GetLastError() != ERROR_IO_PENDING) { ThreadErrorNumber = 0x2; break; }
->>>>>>> .theirs
 						// ждём окончания операции вывода очередной порции данных
 						if(WaitForSingleObject(WriteEvent[RequestNumber^0x1], TimeOut) == WAIT_TIMEOUT)
 						{ ThreadErrorNumber = 0x3; break; }
 
-<<<<<<< .mine						if(ThreadErrorNumber) break;
+						if(ThreadErrorNumber) break;
 						else if(kbhit()) { ThreadErrorNumber = 0x1; break; }
 						else Sleep(0);
 						Counter++;
 				}
-=======						// сформируем следующую порцию выводимых данных (учитывая корректировку)
-						BaseIndex = (RequestNumber^0x1)*DataStep;
-						for(i = 0x0; i < DataStep; i++)
-						{
-								if (CurrentTime < PulseDuration)
-								{
-										WriteBuffer[i] = Round((2047.0 + SignalAmplitude + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
-								}
-								else
-								{
-										WriteBuffer[i] = Round((2047.0 + fi.DacOffsetCoef[DacNumber])*fi.DacScaleCoef[DacNumber]);
-								}	
-								WriteBuffer[i + BaseIndex] &= (WORD)(0xFFF);
-								WriteBuffer[i + BaseIndex] |= (WORD)(DacNumber << 15) | (WORD)(0x1 << 14);
-								CurrentTime += 1.0/dp.OutputRate;
-								if (CurrentTime > 2*PulseDuration)
-								{
-										break;
-								}
-						}
->>>>>>> .theirs
-<<<<<<< .mine=======						if(ThreadErrorNumber) break;
-						else if(kbhit()) { ThreadErrorNumber = 0x1; break; }
-						else Sleep(0);
-						Counter++;
-				}
->>>>>>> .theirs		}
-<<<<<<< .mine		else { ThreadErrorNumber = 0x5; }
+		}
+		else { ThreadErrorNumber = 0x5; }
 		
 		// остановим вывод данных
 		if(!pModule->STOP_WRITE()) ThreadErrorNumber = 0x6;
@@ -423,23 +339,12 @@ DWORD WINAPI ServiceWriteThread(PVOID /*Context*/)
 		if(!CancelIo(pModule->GetModuleHandle())) ThreadErrorNumber = 0x7;
 		// освободим идентификаторы событий
 		CloseHandle(WriteEvent[0]); CloseHandle(WriteEvent[1]);
-=======		else { ThreadErrorNumber = 0x5; }
->>>>>>> .theirs
-<<<<<<< .mine		// установим флажок окончания потока вывода данных
-		IsThreadComplete = true;
-=======		// остановим вывод данных
-		if(!pModule->STOP_WRITE()) ThreadErrorNumber = 0x6;
-		// уберём за собой
-		if(!CancelIo(pModule->GetModuleHandle())) ThreadErrorNumber = 0x7;
-		// освободим идентификаторы событий
-		CloseHandle(WriteEvent[0]); CloseHandle(WriteEvent[1]);
->>>>>>> .theirs
-<<<<<<< .mine		return 0;							// Выйдем из потока
-=======		// установим флажок окончания потока вывода данных
+
+// установим флажок окончания потока вывода данных
 		IsThreadComplete = true;
 
-		return 0;							// Выйдем из потока
->>>>>>> .theirs}
+return 0;							// Выйдем из потока
+}
 
 //---------------------------------------------------------------------------
 //
