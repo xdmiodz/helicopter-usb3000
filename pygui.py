@@ -77,6 +77,11 @@ class TestParameters(DataSet):
 	syncch =  IntItem("#Sync channel", default=1, min=1, max=2, help="The sync DAC channel")
 	_eg = EndGroup("Pulse")
 
+	_bg = BeginGroup("Save raw channel data")
+	savedir = DirectoryItem("Directory", os.getcwd())
+	prefix = lStringItem("prefix", default="ch")
+	_eg = EndGroup("Save raw channel data")
+
 class DataWrite(object):
 	""" Class to write data to usb3000
 	"""
