@@ -229,7 +229,7 @@ class BoundControlBox(wx.Panel):
 		wx.Panel.__init__(self, parent, ID)
 		
 		self.value = initval
-		
+
 		box = wx.StaticBox(self, -1, label)
 		sizer = wx.StaticBoxSizer(box, wx.VERTICAL)
 		
@@ -292,7 +292,8 @@ class GraphFrame(wx.Frame):
 		self.data2 = np.array([0], dtype=np.int32)
 		self.time = np.array([0])
 		self.paused = False
-		
+
+		self.counter = 0		
 		self.create_menu()
 		self.create_status_bar()
 		self.create_main_panel()
@@ -300,7 +301,10 @@ class GraphFrame(wx.Frame):
 		self.redraw_timer = wx.Timer(self)
 		self.Bind(wx.EVT_TIMER, self.on_redraw_timer, self.redraw_timer)	
 		self.redraw_timer.Start(int(float(self.e.period)*1000))
+		self.paused=True
+		self.on_update_pause_button("")
 	
+		
 	def on_update_config(self):
 		self.config.set('cmds', 'readcmd', self.e.readcmd)
 		self.config.set('cmds', 'writecmd', self.e.writecmd)
@@ -379,18 +383,7 @@ class GraphFrame(wx.Frame):
 		self.ymin_control2 = BoundControlBox(self.panel, -1, "Y2 min", 0)
 		self.ymax_control2 = BoundControlBox(self.panel, -1, "Y2 max", 100)
 		
-		readcmd = self.config.get('cmds', 'readcmd')
-		writecmd = self.config.get('cmds', 'writecmd')
-		period = self.config.getfloat('pulse', 'period')
-		duration = self.config.getfloat('pulse', 'duration')
-		
-		self.pulse_control = BoundTextBox(self.panel, -1, "Pulse", "Period, sec", 
-						  "Duration, sec", period, duration)
-		self.cmd_control = BoundFileBox(self.panel, -1, "Cmds", "Read cmd", 
-						"Write cmd", readcmd, writecmd)
-										  
-		[RC, WC] = self.cmd_control.manual_value()
-		self.dataread.set_readcmd(RC)
+	
 		self.pause_button = wx.Button(self.panel, -1, "Pause")
 		self.Bind(wx.EVT_BUTTON, self.on_pause_button, self.pause_button)
 		self.Bind(wx.EVT_UPDATE_UI, self.on_update_pause_button, self.pause_button)
@@ -433,15 +426,11 @@ class GraphFrame(wx.Frame):
 		self.hbox3.Add(self.ymin_control2, border=5, flag=wx.ALL)
 		self.hbox3.Add(self.ymax_control2, border=5, flag=wx.ALL)
 
-		self.hbox4 = wx.BoxSizer(wx.HORIZONTAL)
-		self.hbox4.Add(self.pulse_control, border=5, flag=wx.ALL)
-		self.hbox4.Add(self.cmd_control, border=5, flag=wx.ALL)
 		
 		self.cbox = wx.BoxSizer(wx.VERTICAL)
 		self.cbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
 		self.cbox.Add(self.hbox2, 0, flag=wx.ALIGN_LEFT | wx.TOP)
 		self.cbox.Add(self.hbox3, 0, flag=wx.ALIGN_LEFT | wx.TOP)
-		self.cbox.Add(self.hbox4, 0, flag=wx.ALIGN_LEFT | wx.TOP)
 		
 		self.vbox = wx.BoxSizer(wx.HORIZONTAL)
 		self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP | wx.GROW)		
@@ -481,6 +470,7 @@ class GraphFrame(wx.Frame):
 		pylab.setp(self.axes2.get_yticklabels(), fontsize=8)
 		
 		pylab.setp(self.axes.get_xticklabels(), visible=0)
+		self.fig.text(0.89,0.91, str(self.counter), bbox=dict(facecolor='white', alpha=1))
 
 		# plot the data as a line series, and save the reference 
 		# to the plotted line series
@@ -583,7 +573,7 @@ class GraphFrame(wx.Frame):
 		
 		self.plot_data2.set_xdata(self.time/1000)
 		self.plot_data2.set_ydata(self.data2)
-		
+		self.fig.text(0.89,0.91, str(self.counter), bbox=dict(facecolor='white', alpha=1))
 		self.canvas.draw()
   
 	def on_pause_button(self, event):
@@ -652,6 +642,7 @@ class GraphFrame(wx.Frame):
 		#
 
 		if not self.paused:
+			self.counter+=1
 			ch1 = self.config.getint('channels', 'ch1') - 1
 			ch2 = self.config.getint('channels', 'ch2') - 1
 			Ach1 = eval(self.config.get('channels', 'Ach1'))
