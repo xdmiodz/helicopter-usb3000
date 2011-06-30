@@ -78,7 +78,7 @@ class TestParameters(DataSet):
 	_eg = EndGroup("Pulse")
 
 	_bg = BeginGroup("Save raw channels data")
-	raw_savedir = DirectoryItem("Directory", os.getcwd() + "/tmp")
+	raw_savedir = DirectoryItem("Directory", os.getcwd() + "\\tmp")
 	raw_fileprefix = StringItem("File Name", default="raw_")
 	_eg = EndGroup("Save raw channels data")
 
@@ -101,7 +101,7 @@ class DataGen(object):
 		self.time = np.array([])
 		
 	def update(self, readcmd, ch1, ch2, pulse_period, Ach1, Ach2, raw_filename):
-		raw = open(raw_filename, "r")
+		raw = open(raw_filename, "w")
 		fromfile =  tempfile.mktemp()
 		normcmd = os.path.normpath(readcmd)
 		args = [normcmd, fromfile]
@@ -663,7 +663,7 @@ class GraphFrame(wx.Frame):
 			syncch = self.config.getint('pulse', 'syncch')
 			duration = self.config.getfloat('pulse', 'duration')*1000
 			self.datawrite.writedata(writecmd, syncch, duration)
-			raw_filename = self.e.raw_savedir +'//' + self.e.raw_fileprefix + "_" + str(self.counter) + ".dat"
+			raw_filename = self.e.raw_savedir +'\\' + self.e.raw_fileprefix + str(self.counter) + ".dat"
 			[self.data, self.data2, self.time] = self.dataread.update(readcmd, ch1, ch2, self.redraw_timer.GetInterval(), Ach1, Ach2, raw_filename)
 		self.draw_plot()
 		
