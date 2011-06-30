@@ -60,8 +60,8 @@ class EvalStringItem(StringItem):
 
 class TestParameters(DataSet):
 	_bg = BeginGroup("R/W Commands")
-	readcmd = FileOpenItem("Reading command", "exe", "")
-	writecmd = FileOpenItem("Writing command", "exe", "")
+	readcmd = FileOpenItem("Read command", "exe", "")
+	writecmd = FileOpenItem("Write command", "exe", "")
 	_eg = EndGroup("R/W Commands")
 	
 	_bg = BeginGroup("Channels")
@@ -77,10 +77,10 @@ class TestParameters(DataSet):
 	syncch =  IntItem("#Sync channel", default=1, min=1, max=2, help="The sync DAC channel")
 	_eg = EndGroup("Pulse")
 
-	_bg = BeginGroup("Save raw channel data")
-	savedir = DirectoryItem("Directory", os.getcwd())
-	prefix = StringItem("prefix", default="ch")
-	_eg = EndGroup("Save raw channel data")
+	_bg = BeginGroup("Save raw channels data")
+	raw_savedir = DirectoryItem("Directory", os.getcwd())
+	raw_filename = StringItem("File Name", default="raw.dat")
+	_eg = EndGroup("Save raw channels data")
 
 class DataWrite(object):
 	""" Class to write data to usb3000
@@ -89,7 +89,7 @@ class DataWrite(object):
 		normcmd = os.path.normpath(writecmd)
 		args = [normcmd, str(duration), str(channel)]
 		print 'write to DAC'
-		r = subprocess.call(args)
+		#r = subprocess.call(args)
 
 class DataGen(object):
 	""" Class to read data from usb300
@@ -100,7 +100,8 @@ class DataGen(object):
 		self.ch2 = np.array([], dtype=np.int32)
 		self.time = np.array([])
 		
-	def update(self, readcmd, ch1, ch2, pulse_period, Ach1, Ach2):
+	def update(self, readcmd, ch1, ch2, pulse_period, Ach1, Ach2, raw_filename):
+		raw = open(raw_filename, "a")
 		fromfile =  tempfile.mktemp()
 		normcmd = os.path.normpath(readcmd)
 		args = [normcmd, fromfile]
@@ -126,6 +127,11 @@ class DataGen(object):
 			lastt=self.time[l-1]
 		
 		self.time = np.append(self.time, [lastt + pulse_period])
+		
+		rawin = open(fromfile, "r")
+		raw.write(rawim.read())
+		rawin.close()
+		raw.close()
 		os.remove(fromfile)
 		return [self.ch1, self.ch2, self.time]
 		 
@@ -657,7 +663,8 @@ class GraphFrame(wx.Frame):
 			syncch = self.config.getint('pulse', 'syncch')
 			duration = self.config.getfloat('pulse', 'duration')*1000
 			self.datawrite.writedata(writecmd, syncch, duration)
-			[self.data, self.data2, self.time] = self.dataread.update(readcmd, ch1, ch2, self.redraw_timer.GetInterval(), Ach1, Ach2)
+			raw_filename = self.e.raw_savedir +'//' + self.e.raw_filename
+			[self.data, self.data2, self.time] = self.dataread.update(readcmd, ch1, ch2, self.redraw_timer.GetInterval(), Ach1, Ach2, raw_filename)
 		self.draw_plot()
 		
 		if self.redraw_timer.GetInterval() != int(float(self.e.period)*1000):
