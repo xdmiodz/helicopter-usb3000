@@ -79,7 +79,7 @@ class TestParameters(DataSet):
 
 	_bg = BeginGroup("Save raw channel data")
 	savedir = DirectoryItem("Directory", os.getcwd())
-	prefix = lStringItem("prefix", default="ch")
+	prefix = StringItem("prefix", default="ch")
 	_eg = EndGroup("Save raw channel data")
 
 class DataWrite(object):
