@@ -129,7 +129,7 @@ class DataGen(object):
 		self.time = np.append(self.time, [lastt + pulse_period])
 		
 		rawin = open(fromfile, "r")
-		raw.write(rawim.read())
+		raw.write(rawin.read())
 		rawin.close()
 		raw.close()
 		os.remove(fromfile)
