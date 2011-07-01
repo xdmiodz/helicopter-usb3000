@@ -1,4 +1,4 @@
-#"""
+2#"""
 #This demo demonstrates how to draw a dynamic mpl (matplotlib) 
 #plot in a wxPython application.
 
@@ -101,7 +101,7 @@ class DataGen(object):
 		self.time = np.array([])
 		
 	def update(self, readcmd, ch1, ch2, pulse_period, Ach1, Ach2, raw_filename):
-		raw = open(raw_filename, "w")
+		#raw = open(raw_filename, "w")
 		fromfile =  tempfile.mktemp()
 		normcmd = os.path.normpath(readcmd)
 		args = [normcmd, fromfile]
@@ -127,11 +127,11 @@ class DataGen(object):
 			lastt=self.time[l-1]
 		
 		self.time = np.append(self.time, [lastt + pulse_period])
-		
-		rawin = open(fromfile, "r")
-		raw.write(rawin.read())
-		rawin.close()
-		raw.close()
+		t.tofile(raw, dtype=pylab.int16)
+		#rawin = open(fromfile, "r")
+		#raw.write(rawin.read())
+		#rawin.close()
+		#raw.close()
 		os.remove(fromfile)
 		return [self.ch1, self.ch2, self.time]
 		 
