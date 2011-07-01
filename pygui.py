@@ -1,4 +1,4 @@
-2#"""
+#"""
 #This demo demonstrates how to draw a dynamic mpl (matplotlib) 
 #plot in a wxPython application.
 
@@ -36,6 +36,7 @@ from guidata.dataset.qtwidgets import DataSetEditLayout, DataSetShowLayout, Line
 from guidata.dataset.qtitemwidgets import LineEditWidget, DataSetWidget
 import guidata
 
+from datetime import datetime
 # The recommended way to use wx with mpl is with the WXAgg
 # backend. 
 #
@@ -89,7 +90,7 @@ class DataWrite(object):
 		normcmd = os.path.normpath(writecmd)
 		args = [normcmd, str(duration), str(channel)]
 		print 'write to DAC'
-		#r = subprocess.call(args)
+		r = subprocess.call(args)
 
 class DataGen(object):
 	""" Class to read data from usb300
@@ -98,7 +99,7 @@ class DataGen(object):
 	def __init__(self):
 		self.ch1 = np.array([], dtype=np.int32)
 		self.ch2 = np.array([], dtype=np.int32)
-		self.time = np.array([])
+		self.time = np.array([], dtype=datetime)
 		
 	def update(self, readcmd, ch1, ch2, pulse_period, Ach1, Ach2, raw_filename):
 		#raw = open(raw_filename, "w")
@@ -112,28 +113,26 @@ class DataGen(object):
 		#l = 0
 		#ch1nval = 1
 		#ch2nval = 2
-		ch1nval = Ach1*np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))
-		ch2nval = Ach2*np.mean(np.array([t[4*i+ch2] for i in xrange(int(l/4))]))
+		ch1nval = np.array([Ach1*t[4*i+ch1] for i in xrange(int(l/4))])
+		ch1nval_mean_first_20 = np.mean(np.array([ch1nval[i] for i in xrange(int(np.size(ch1nval)/50))]))
+		ch2nval = np.array([Ach2*t[4*i+ch2] for i in xrange(int(l/4))])
+		ch2nval_mean_first_20 = np.mean(np.array([ch2nval[i] for i in xrange(int(np.size(ch2nval)/50))]))
 		#ch1nval = (837/664.5)*5*2000*np.mean(np.array([t[4*i+ch1] for i in xrange(int(l/4))]))/8192/1.024
 		#ch2nval = (837/799.8)*5*330*np.mean(np.array([t[4*i+ch2] for i in xrange(int(l/4))]))/8192
-		print 'ch' + str(int(ch1+1)) + ' = ' + str(int(ch1nval)) + ' V/m'
-		print 'ch' + str(int(ch2+1)) + ' = ' + str(int(ch2nval)) + ' V/m'
-		self.ch1 = np.append(self.ch1, [int(ch1nval)])
-		self.ch2 = np.append(self.ch2, [int(ch2nval)])
-		l = np.size(self.time)
-		if l==0:
-			lastt = 0
-		else:
-			lastt=self.time[l-1]
+		print 'ch' + str(int(ch1+1)) + ' = ' + str(int(ch1nval_mean_first_20)) + ' V/m'
+		print 'ch' + str(int(ch2+1)) + ' = ' + str(int(ch2nval_mean_first_20)) + ' V/m'
+		self.ch1 = np.append(self.ch1, [int(ch1nval_mean_first_20)])
+		self.ch2 = np.append(self.ch2, [int(ch2nval_mean_first_20)])
+		lastt = datetime.now()
 		
-		self.time = np.append(self.time, [lastt + pulse_period])
-		t.tofile(raw, dtype=pylab.int16)
+		self.time = np.append(self.time, [lastt])
+		t.tofile(raw_filename)
 		#rawin = open(fromfile, "r")
 		#raw.write(rawin.read())
 		#rawin.close()
 		#raw.close()
 		os.remove(fromfile)
-		return [self.ch1, self.ch2, self.time]
+		return [self.ch1, self.ch2, self.time, ch1nval, ch2nval]
 		 
 		
 	def savedata(self, ch1f, ch2f, tf):
@@ -301,7 +300,9 @@ class GraphFrame(wx.Frame):
 		self.datawrite = DataWrite()
 		self.data = np.array([0],dtype=np.int32)
 		self.data2 = np.array([0], dtype=np.int32)
-		self.time = np.array([0])
+		self.raw1 = np.array([0], dtype=np.int32)
+		self.raw2 = np.array([0], dtype=np.int32)
+		self.time = np.array([], dtype=datetime)
 		self.paused = False
 
 		self.counter = 0		
@@ -471,7 +472,7 @@ class GraphFrame(wx.Frame):
 		self.axes2 = self.fig.add_subplot(212)
 		self.axes2.set_axis_bgcolor('black')
 		self.axes2.set_title('Channel 2', size=10)
-		self.axes2.set_xlabel('Time, secs', size=10)
+		self.axes2.set_xlabel('Ticks, n', size=10)
 		#self.axes.set_xticks([])
 
 		pylab.setp(self.axes.get_xticklabels(), fontsize=8)
@@ -481,8 +482,11 @@ class GraphFrame(wx.Frame):
 		pylab.setp(self.axes2.get_yticklabels(), fontsize=8)
 		
 		pylab.setp(self.axes.get_xticklabels(), visible=0)
-		self.fig.text(0.89,0.91, str(self.counter), bbox=dict(facecolor='white', alpha=1))
-
+		#self.fig.text(0.89,0.91, str(self.counter), bbox=dict(facecolor='white', alpha=1))
+		
+		#self.fig.text(0.13,0.93, str(self.data[-1]-self.data2[-1]), bbox=dict(facecolor='white', alpha=1))
+#+ " pm " + str(self.data.std() + self.data2.std()
+		
 		# plot the data as a line series, and save the reference 
 		# to the plotted line series
 		#
@@ -506,22 +510,22 @@ class GraphFrame(wx.Frame):
 		# xmax.
 		#
 		if self.xmax_control.is_auto():
-			xmax = len(self.data) if len(self.data) > 50 else 50
+			xmax = len(self.data) 
 		else:
 			xmax = int(self.xmax_control.manual_value())
 			
 		if self.xmin_control.is_auto():			
-			xmin = xmax - 50
+			xmin = 0
 		else:
 			xmin = int(self.xmin_control.manual_value())
 
 		if self.xmax_control2.is_auto():
-			xmax2 = len(self.data2) if len(self.data2) > 50 else 50
+			xmax2 = len(self.data2)
 		else:
 			xmax2 = int(self.xmax_control2.manual_value())
 			
 		if self.xmin_control2.is_auto():			
-			xmin2 = xmax2 - 50
+			xmin2 = 0
 		else:
 			xmin2 = int(self.xmin_control2.manual_value())
 
@@ -579,12 +583,23 @@ class GraphFrame(wx.Frame):
 		pylab.setp(self.axes2.get_xticklabels(), 
 			visible=self.cb_xlab.IsChecked())
 		
-		self.plot_data.set_xdata(self.time/1000)
+		self.plot_data.set_xdata(range(self.counter))
 		self.plot_data.set_ydata(self.data)
 		
-		self.plot_data2.set_xdata(self.time/1000)
+		self.plot_data2.set_xdata(range(self.counter))
 		self.plot_data2.set_ydata(self.data2)
-		self.fig.text(0.89,0.91, str(self.counter), bbox=dict(facecolor='white', alpha=1))
+		#self.fig.text(0.89,0.91, str(self.counter), bbox=dict(facecolor='white', alpha=1))
+		#self.fig.text(0.13,0.92, str(self.data[-1]-self.data2[-1]) + " pm " + str(self.data.std() + self.data2.std()), bbox=dict(facecolor='white', alpha=1))
+		
+		raw1_20=np.array([self.raw1[i] for i in xrange(np.size(self.raw1)/50)])
+		raw2_20=np.array([self.raw2[i] for i in xrange(np.size(self.raw2)/50)])
+		
+		print "count: " + str(self.counter)
+		print self.time[-1]
+		print " "
+		print "E Field: " + str(self.data[-1]-self.data2[-1]) + " pm " + str(2.5*int(raw1_20.std() + raw2_20.std())) + " V/m"
+		print " "
+		print " "
 		self.canvas.draw()
   
 	def on_pause_button(self, event):
@@ -631,6 +646,12 @@ class GraphFrame(wx.Frame):
 			path = dlg.GetPath()
 			np.savez(path, ch1=self.data, ch2=self.data2, time=self.time)
 			self.flash_status_message("Data saved to %s" % path)
+		
+		#self.e.raw_savedir +'\\' + ch1 + ".dat"		
+		f=open(self.e.raw_savedir +'\\' + self.e.raw_fileprefix + "data" + ".txt", "w")
+		f.write("time\tch1\tch2\delta\n")
+		[f.write(str(self.time[i]) + "\t" + str(self.data[i]) + "\t" + str(self.data2[i]) + "\t" + str(self.data[i]-self.data2[i]) + "\n") for i in xrange(np.size(self.data))]
+		f.close()
 
 	def on_save_config(self, event):
 		file_choices = "INI (*.ini)|*.ini"
@@ -664,7 +685,7 @@ class GraphFrame(wx.Frame):
 			duration = self.config.getfloat('pulse', 'duration')*1000
 			self.datawrite.writedata(writecmd, syncch, duration)
 			raw_filename = self.e.raw_savedir +'\\' + self.e.raw_fileprefix + str(self.counter) + ".dat"
-			[self.data, self.data2, self.time] = self.dataread.update(readcmd, ch1, ch2, self.redraw_timer.GetInterval(), Ach1, Ach2, raw_filename)
+			[self.data, self.data2, self.time, self.raw1, self.raw2] = self.dataread.update(readcmd, ch1, ch2, self.redraw_timer.GetInterval(), Ach1, Ach2, raw_filename)
 		self.draw_plot()
 		
 		if self.redraw_timer.GetInterval() != int(float(self.e.period)*1000):

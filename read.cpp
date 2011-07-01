@@ -46,12 +46,12 @@ RTUSB3000::INPUT_PARS ip;
 // максимально возможное кол-во опрашиваемых виртуальных слотов
 const WORD MaxVirtualSoltsQuantity = 127;
 // частота  ввода данных
-const double ReadRate = 1000.0; 
+const double ReadRate = 5.0; 
 
 //max возможное кол-во передаваемых отсчетов (кратное 32) для ф. ReadData и WriteData()
-DWORD DataStep = 1024*128;
+DWORD DataStep = 1024*8;
 // столько блоков по DataStep отсчётов нужно собрать в файл
-const WORD NBlockRead = 1;
+const WORD NBlockRead = 3;
 // указатель на буфер для вводимых данных
 SHORT	*ReadBuffer;
 
@@ -185,9 +185,9 @@ void main(int argc, char* argv[])
 		//printf("   InputClockSource is %s\n", ip.InputClockSource ? "EXTERNAL" : "INTERNAL");
 		//printf("   SynchroType is %s\n", ip.SynchroType ? "TTL_START_SYNCHRO" : "NO_SYNCHRO");
 		//printf("   ChannelsQuantity = %2d\n", ip.ChannelsQuantity);
-		//printf("   AdcRate = %8.3f kHz\n", ip.InputRate);
+		printf("   AdcRate = %8.3f kHz\n", ip.InputRate);
 		//printf("   InterKadrDelay = %2.4f ms\n", ip.InterKadrDelay);
-		//printf("   ChannelRate = %8.3f kHz\n", ip.ChannelRate);
+		printf("   ChannelRate = %8.3f kHz\n", ip.ChannelRate);
 
 		// пока откытого файла нет :(
 		hFile = INVALID_HANDLE_VALUE;
